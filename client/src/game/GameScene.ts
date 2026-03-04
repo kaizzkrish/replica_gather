@@ -39,7 +39,7 @@ export default class GameScene extends Phaser.Scene {
         }
 
         // 1. Draw solid floor
-        this.add.rectangle(400, 300, 800, 600, 0x242424); // Dark floor
+        this.add.rectangle(400, 300, 800, 600, 0x242424).setDepth(-10); // Very bottom
         console.log('Floor drawn.');
 
         // Grid Background
@@ -54,6 +54,7 @@ export default class GameScene extends Phaser.Scene {
             graphics.lineTo(800, j);
         }
         graphics.strokePath();
+        graphics.setDepth(-5); // Below players, above floor
 
         // Listener: Initial Players
         this.socket.on('currentPlayers', (players: any) => {
@@ -304,6 +305,8 @@ export default class GameScene extends Phaser.Scene {
                     sprite.setTexture(key);
                     sprite.setDisplaySize(40, 40);
                     sprite.clearTint();
+                    // Re-enforce depth just in case texture change reset anything
+                    sprite.setDepth(sprite.depth || 10);
                 }
             });
 
@@ -312,6 +315,7 @@ export default class GameScene extends Phaser.Scene {
                     console.warn(`Failed to load avatar for ${id}, using default icon.`);
                     sprite.setTexture('playerIcon');
                     sprite.setDisplaySize(40, 40);
+                    sprite.setDepth(sprite.depth || 10);
                 }
             });
 

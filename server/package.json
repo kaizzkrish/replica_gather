@@ -4,7 +4,7 @@
   "main": "index.js",
   "type": "module",
   "scripts": {
-    "dev": "nodemon --ext ts,json --loader ts-node/esm src/index.ts",
+    "dev": "tsx watch src/index.ts",
     "start": "ts-node src/index.ts",
     "build": "tsc"
   },
@@ -26,6 +26,7 @@
     "@types/pg": "^8.18.0",
     "nodemon": "^3.1.14",
     "ts-node": "^10.9.2",
+    "tsx": "^4.21.0",
     "typescript": "^5.9.3"
   }
 }
