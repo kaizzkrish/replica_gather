@@ -4,7 +4,7 @@
   "main": "index.js",
   "type": "module",
   "scripts": {
-    "dev": "nodemon src/index.ts",
+    "dev": "nodemon --ext ts,json --loader ts-node/esm src/index.ts",
     "start": "ts-node src/index.ts",
     "build": "tsc"
   },
