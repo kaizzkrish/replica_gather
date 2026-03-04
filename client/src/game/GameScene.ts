@@ -248,9 +248,12 @@ export default class GameScene extends Phaser.Scene {
     }
 
     private updateAvatarImage(sprite: Phaser.GameObjects.Sprite, url: string, id: string) {
-        if (!url || !url.startsWith('http')) return;
+        if (!url || (!url.startsWith('http') && !url.startsWith('data:image'))) return;
 
-        const key = `avatar_${id}_${url.substring(url.lastIndexOf('/') + 1)}`;
+        // Generate a stable key for the texture
+        const key = url.startsWith('data:')
+            ? `avatar_base64_${id}_${url.length}`
+            : `avatar_${id}_${url.substring(url.lastIndexOf('/') + 1)}`;
 
         if (this.textures.exists(key)) {
             sprite.setTexture(key);

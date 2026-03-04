@@ -331,6 +331,11 @@ h1 {
   cursor: pointer;
   line-height: 1;
   transition: color 0.2s;
+  cursor: pointer;
+}
+
+.clickable {
+  cursor: pointer;
 }
 
 .close-btn:hover {
@@ -495,6 +500,27 @@ h1 {
 .edit-input:focus {
   outline: none;
   box-shadow: 0 0 0 2px rgba(100, 108, 255, 0.3);
+}
+
+.image-input-container {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.clear-img-btn {
+  background-color: #444;
+  color: #fff;
+  border: none;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.clear-img-btn:hover {
+  background-color: #555;
 }
 
 .email-readonly {

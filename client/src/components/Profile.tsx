@@ -25,6 +25,22 @@ const Profile: React.FC<ProfileProps> = ({ socket, onClose }) => {
         setIsEditing(false);
     };
 
+    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (file) {
+            if (file.size > 1024 * 1024) {
+                alert('File is too large! Please choose an image under 1MB.');
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                setEditedPicture(reader.result as string);
+            };
+            reader.readAsDataURL(file);
+        }
+    };
+
     return (
         <div className="profile-overlay" onClick={onClose}>
             <div className="profile-card" onClick={(e) => e.stopPropagation()}>
@@ -36,14 +52,20 @@ const Profile: React.FC<ProfileProps> = ({ socket, onClose }) => {
                 <div className="profile-content">
                     <div className="profile-avatar-section">
                         <img
-                            src={isEditing ? editedPicture : editedPicture || 'https://via.placeholder.com/150'}
+                            src={editedPicture || 'https://via.placeholder.com/150'}
                             alt={user.name}
                             className="profile-picture"
                         />
                         {isEditing && (
-                            <div className="avatar-edit-overlay">
-                                <span>Change URL below</span>
-                            </div>
+                            <label className="avatar-edit-overlay clickable">
+                                <span>Upload New</span>
+                                <input
+                                    type="file"
+                                    accept="image/*"
+                                    onChange={handleFileChange}
+                                    style={{ display: 'none' }}
+                                />
+                            </label>
                         )}
                     </div>
 
@@ -64,14 +86,25 @@ const Profile: React.FC<ProfileProps> = ({ socket, onClose }) => {
 
                         {isEditing && (
                             <div className="info-group">
-                                <label>Profile Image URL</label>
-                                <input
-                                    type="text"
-                                    value={editedPicture}
-                                    placeholder="Paste image URL here..."
-                                    onChange={(e) => setEditedPicture(e.target.value)}
-                                    className="edit-input"
-                                />
+                                <label>Profile Image (URL or Base64)</label>
+                                <div className="image-input-container">
+                                    <input
+                                        type="text"
+                                        value={editedPicture.startsWith('data:') ? 'Image uploaded locally' : editedPicture}
+                                        placeholder="Paste image URL here..."
+                                        onChange={(e) => setEditedPicture(e.target.value)}
+                                        className="edit-input"
+                                        disabled={editedPicture.startsWith('data:')}
+                                    />
+                                    {editedPicture.startsWith('data:') && (
+                                        <button
+                                            className="clear-img-btn"
+                                            onClick={() => setEditedPicture('')}
+                                        >
+                                            Reset
+                                        </button>
+                                    )}
+                                </div>
                             </div>
                         )}
 
