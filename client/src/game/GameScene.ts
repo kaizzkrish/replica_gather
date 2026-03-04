@@ -76,7 +76,9 @@ export default class GameScene extends Phaser.Scene {
         this.socket.emit('joinRoom', {
             room: 'main-space',
             name: this.userData?.name || this.userData?.nickname || 'Explorer',
-            picture: this.userData?.picture || ''
+            picture: this.userData?.picture || '',
+            userId: this.userData?.sub, // Auth0 Unique ID
+            email: this.userData?.email
         });
 
         this.socket.on('profileUpdated', (playerInfo: any) => {

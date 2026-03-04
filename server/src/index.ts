@@ -2,14 +2,22 @@ import express from 'express';
 import http from 'http';
 import { Server } from 'socket.io';
 import cors from 'cors';
+import dotenv from 'dotenv';
+import pool from './db/pool.js';
+import { initDb } from './db/init.js';
+
+dotenv.config();
 
 const app = express();
-app.use(cors());
+const origins = process.env.CORS_ORIGINS?.split(',') || ["http://localhost:5173", "http://localhost:5174"];
+
+app.use(cors({ origin: origins }));
+app.use(express.json());
 
 const server = http.createServer(app);
 const io = new Server(server, {
     cors: {
-        origin: ["http://localhost:5173", "http://127.0.0.1:5173", "http://localhost:5174", "http://127.0.0.1:5174"], // Support both common Vite ports
+        origin: origins,
         methods: ["GET", "POST"]
     }
 });
@@ -17,73 +25,111 @@ const io = new Server(server, {
 interface Player {
     x: number;
     y: number;
-    id: string;
+    id: string; // Socket ID
+    userId: string; // Auth0 Sub
     name: string;
     picture: string;
     room: string;
 }
 
-const players: Record<string, Player> = {};
+// In-memory store for active connections
+const activePlayers: Record<string, Player> = {};
+
+// Initialize Database
+initDb();
 
 io.on('connection', (socket) => {
     console.log('A user connected:', socket.id);
 
-    socket.on('joinRoom', (data: { room: string, name: string, picture?: string }) => {
-        if (!data) return;
-        const { room, name, picture } = data;
+    socket.on('joinRoom', async (data: { room: string, name: string, picture?: string, userId: string, email?: string }) => {
+        if (!data || !data.userId) return;
+        const { room, name, picture, userId, email } = data;
+
         socket.join(room);
 
-        const newPlayer = {
-            x: 380,
-            y: 300,
-            id: socket.id,
-            name: name || 'Guest',
-            picture: picture || '',
-            room: room
-        };
-        players[socket.id] = newPlayer;
+        try {
+            // Upsert user in Postgres
+            const res = await pool.query(
+                `INSERT INTO users (id, name, email, picture, room) 
+                 VALUES ($1, $2, $3, $4, $5) 
+                 ON CONFLICT (id) DO UPDATE 
+                 SET name = EXCLUDED.name, email = EXCLUDED.email, picture = EXCLUDED.picture, room = EXCLUDED.room
+                 RETURNING last_x, last_y, name, picture`,
+                [userId, name, email, picture, room]
+            );
 
-        // Filter players by room
-        const roomPlayers: Record<string, Player> = {};
-        Object.keys(players).forEach(id => {
-            const p = players[id];
-            if (p && p.room === room) {
-                roomPlayers[id] = p;
-            }
-        });
+            const dbUser = res.rows[0];
 
-        // Send current players in room to the new user
-        socket.emit('currentPlayers', roomPlayers);
+            const newPlayer: Player = {
+                x: dbUser.last_x,
+                y: dbUser.last_y,
+                id: socket.id,
+                userId: userId,
+                name: dbUser.name,
+                picture: dbUser.picture,
+                room: room
+            };
 
-        // Broadcast to others in the same room
-        socket.to(room).emit('newPlayer', newPlayer);
+            activePlayers[socket.id] = newPlayer;
 
-        console.log(`User ${name} joined room: ${room}`);
-    });
+            // Filter players by room
+            const roomPlayers: Record<string, Player> = {};
+            Object.keys(activePlayers).forEach(id => {
+                const p = activePlayers[id];
+                if (p && p.room === room) {
+                    roomPlayers[id] = p;
+                }
+            });
 
-    socket.on('playerMovement', (movementData: { x: number, y: number }) => {
-        if (!movementData) return;
-        const player = players[socket.id];
-        if (player) {
-            player.x = movementData.x;
-            player.y = movementData.y;
-            // Broadcast movement to all other players in the same room
-            socket.to(player.room).emit('playerMoved', player);
+            // Sync with client
+            socket.emit('currentPlayers', roomPlayers);
+            socket.to(room).emit('newPlayer', newPlayer);
+
+            console.log(`User ${dbUser.name} (${userId}) joined room: ${room}`);
+        } catch (err) {
+            console.error('Error in joinRoom:', err);
         }
     });
 
-    socket.on('updateProfile', (data: { name: string, picture: string }) => {
-        const player = players[socket.id];
+    socket.on('playerMovement', async (movementData: { x: number, y: number }) => {
+        if (!movementData) return;
+        const player = activePlayers[socket.id];
+        if (player) {
+            player.x = movementData.x;
+            player.y = movementData.y;
+
+            // Broadcast movement
+            socket.to(player.room).emit('playerMoved', player);
+
+            // Persist position occasionally or on disconnect is better for performance, 
+            // but for "universal standard" we might want to update DB on some interval.
+            // For now, let's keep it in memory and save on disconnect.
+        }
+    });
+
+    socket.on('updateProfile', async (data: { name: string, picture: string }) => {
+        const player = activePlayers[socket.id];
         if (player) {
             player.name = data.name;
             player.picture = data.picture;
-            // Broadcast update to everyone in the room
-            io.to(player.room).emit('profileUpdated', player);
+
+            try {
+                // Persist to Postgres
+                await pool.query(
+                    `UPDATE users SET name = $1, picture = $2 WHERE id = $3`,
+                    [data.name, data.picture, player.userId]
+                );
+
+                // Broadcast update
+                io.to(player.room).emit('profileUpdated', player);
+            } catch (err) {
+                console.error('Error updating profile in DB:', err);
+            }
         }
     });
 
     socket.on('chatMessage', (message: string) => {
-        const player = players[socket.id];
+        const player = activePlayers[socket.id];
         if (player) {
             io.to(player.room).emit('newMessage', {
                 id: socket.id,
@@ -94,12 +140,23 @@ io.on('connection', (socket) => {
         }
     });
 
-    socket.on('disconnect', () => {
-        const player = players[socket.id];
+    socket.on('disconnect', async () => {
+        const player = activePlayers[socket.id];
         if (player) {
             console.log('User disconnected:', player.name);
+
+            try {
+                // Save last position on disconnect
+                await pool.query(
+                    `UPDATE users SET last_x = $1, last_y = $2 WHERE id = $3`,
+                    [player.x, player.y, player.userId]
+                );
+            } catch (err) {
+                console.error('Error saving position on disconnect:', err);
+            }
+
             io.to(player.room).emit('playerDisconnected', socket.id);
-            delete players[socket.id];
+            delete activePlayers[socket.id];
         }
     });
 });
