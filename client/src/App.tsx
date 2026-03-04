@@ -4,11 +4,13 @@ import { useAuth0 } from '@auth0/auth0-react';
 import Game from './components/Game';
 import Chat from './components/Chat';
 import Auth from './components/Auth';
+import Profile from './components/Profile';
 import './App.css';
 
 function App() {
-  const { isAuthenticated, user, isLoading, logout } = useAuth0();
+  const { isAuthenticated, user, isLoading } = useAuth0();
   const [socket, setSocket] = useState<Socket | null>(null);
+  const [showProfile, setShowProfile] = useState(false);
 
   useEffect(() => {
     if (!isAuthenticated || !user) return;
@@ -32,11 +34,17 @@ function App() {
       ) : (
         <>
           <div className="user-header">
-            <span>Welcome, <strong>{user?.name}</strong>!</span>
-            <button onClick={() => logout({ logoutParams: { returnTo: window.location.origin } })} className="logout-btn">
-              Logout
-            </button>
+            <img
+              src={user?.picture}
+              alt={user?.name}
+              className="user-avatar-small"
+              onClick={() => setShowProfile(true)}
+            />
+            <span onClick={() => setShowProfile(true)}>
+              Welcome, <strong>{user?.name}</strong>!
+            </span>
           </div>
+          {showProfile && <Profile onClose={() => setShowProfile(false)} />}
           <h1>Gather Replica</h1>
           <div className="main-layout">
             <Game socket={socket} user={user} />
