@@ -12,6 +12,18 @@
   gap: 20px;
 }
 
+:root {
+  --primary-color: #646cff;
+  --primary-hover: #535bf2;
+  --bg-dark: #121212;
+  --card-bg: #1a1a1a;
+  --text-main: #ffffff;
+  --text-muted: #888888;
+  --error-color: #ff4444;
+  --success-color: #4ade80;
+  --border-radius: 12px;
+}
+
 .main-layout {
   display: flex;
   flex-direction: column;
@@ -21,7 +33,7 @@
 
 h1 {
   font-family: 'Inter', system-ui, Avenir, Helvetica, Arial, sans-serif;
-  color: #646cff;
+  color: var(--primary-color);
 }
 
 #game-container {
