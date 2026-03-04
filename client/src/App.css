@@ -483,7 +483,8 @@ h1 {
   align-items: center;
   font-size: 0.7rem;
   font-weight: bold;
-  pointer-events: none;
+  pointer-events: auto;
+  cursor: pointer;
 }
 
 .edit-input {
@@ -506,6 +507,28 @@ h1 {
   display: flex;
   gap: 8px;
   align-items: center;
+  min-height: 42px;
+}
+
+.local-upload-status {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex: 1;
+  background-color: rgba(100, 108, 255, 0.1);
+  padding: 8px 14px;
+  border-radius: 8px;
+  border: 1px dashed #646cff;
+  color: #fff;
+  font-size: 0.9rem;
+}
+
+.input-hint {
+  display: block;
+  margin-top: 6px;
+  font-size: 0.75rem;
+  color: #666;
+  font-style: italic;
 }
 
 .clear-img-btn {

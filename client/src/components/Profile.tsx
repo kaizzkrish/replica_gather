@@ -86,25 +86,29 @@ const Profile: React.FC<ProfileProps> = ({ socket, onClose }) => {
 
                         {isEditing && (
                             <div className="info-group">
-                                <label>Profile Image (URL or Base64)</label>
+                                <label>Profile Image Source</label>
                                 <div className="image-input-container">
-                                    <input
-                                        type="text"
-                                        value={editedPicture.startsWith('data:') ? 'Image uploaded locally' : editedPicture}
-                                        placeholder="Paste image URL here..."
-                                        onChange={(e) => setEditedPicture(e.target.value)}
-                                        className="edit-input"
-                                        disabled={editedPicture.startsWith('data:')}
-                                    />
-                                    {editedPicture.startsWith('data:') && (
-                                        <button
-                                            className="clear-img-btn"
-                                            onClick={() => setEditedPicture('')}
-                                        >
-                                            Reset
-                                        </button>
+                                    {editedPicture.startsWith('data:') ? (
+                                        <div className="local-upload-status">
+                                            <span>📷 Local Image Selected</span>
+                                            <button
+                                                className="clear-img-btn"
+                                                onClick={() => setEditedPicture(user.picture || '')}
+                                            >
+                                                Undo Upload
+                                            </button>
+                                        </div>
+                                    ) : (
+                                        <input
+                                            type="text"
+                                            value={editedPicture}
+                                            placeholder="Paste image URL here..."
+                                            onChange={(e) => setEditedPicture(e.target.value)}
+                                            className="edit-input"
+                                        />
                                     )}
                                 </div>
+                                <span className="input-hint">Click the avatar to upload a local file instead</span>
                             </div>
                         )}
 
