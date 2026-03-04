@@ -44,7 +44,7 @@ function App() {
               Welcome, <strong>{user?.name}</strong>!
             </span>
           </div>
-          {showProfile && <Profile onClose={() => setShowProfile(false)} />}
+          {showProfile && <Profile socket={socket} onClose={() => setShowProfile(false)} />}
           <h1>Gather Replica</h1>
           <div className="main-layout">
             <Game socket={socket} user={user} />

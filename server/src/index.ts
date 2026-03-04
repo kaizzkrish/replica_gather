@@ -19,6 +19,7 @@ interface Player {
     y: number;
     id: string;
     name: string;
+    picture: string;
     room: string;
 }
 
@@ -27,9 +28,9 @@ const players: Record<string, Player> = {};
 io.on('connection', (socket) => {
     console.log('A user connected:', socket.id);
 
-    socket.on('joinRoom', (data: { room: string, name: string }) => {
+    socket.on('joinRoom', (data: { room: string, name: string, picture?: string }) => {
         if (!data) return;
-        const { room, name } = data;
+        const { room, name, picture } = data;
         socket.join(room);
 
         const newPlayer = {
@@ -37,6 +38,7 @@ io.on('connection', (socket) => {
             y: 300,
             id: socket.id,
             name: name || 'Guest',
+            picture: picture || '',
             room: room
         };
         players[socket.id] = newPlayer;
@@ -67,6 +69,16 @@ io.on('connection', (socket) => {
             player.y = movementData.y;
             // Broadcast movement to all other players in the same room
             socket.to(player.room).emit('playerMoved', player);
+        }
+    });
+
+    socket.on('updateProfile', (data: { name: string, picture: string }) => {
+        const player = players[socket.id];
+        if (player) {
+            player.name = data.name;
+            player.picture = data.picture;
+            // Broadcast update to everyone in the room
+            io.to(player.room).emit('profileUpdated', player);
         }
     });
 

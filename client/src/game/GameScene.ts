@@ -75,7 +75,24 @@ export default class GameScene extends Phaser.Scene {
         // NOW Join Room once listeners are ready
         this.socket.emit('joinRoom', {
             room: 'main-space',
-            name: this.userData?.name || this.userData?.nickname || 'Explorer'
+            name: this.userData?.name || this.userData?.nickname || 'Explorer',
+            picture: this.userData?.picture || ''
+        });
+
+        this.socket.on('profileUpdated', (playerInfo: any) => {
+            console.log('Profile updated for:', playerInfo.id);
+            if (playerInfo.id === this.socket?.id) {
+                if (this.playerNameText) this.playerNameText.setText(playerInfo.name);
+                this.updateAvatarImage(this.player!, playerInfo.picture, playerInfo.id);
+            } else {
+                this.otherPlayers.getChildren().forEach((other: any) => {
+                    if ((other as any).playerId === playerInfo.id) {
+                        const nameText = this.otherPlayerNames.get(playerInfo.id);
+                        if (nameText) nameText.setText(playerInfo.name);
+                        this.updateAvatarImage(other as Phaser.GameObjects.Sprite, playerInfo.picture, playerInfo.id);
+                    }
+                });
+            }
         });
 
         // Other Listeners...
@@ -203,7 +220,10 @@ export default class GameScene extends Phaser.Scene {
             backgroundColor: '#00000088',
             padding: { x: 4, y: 2 }
         }).setOrigin(0.5, 0.5);
-        console.log('Local player added:', playerInfo.name);
+
+        if (playerInfo.picture) {
+            this.updateAvatarImage(sprite, playerInfo.picture, playerInfo.id);
+        }
     }
 
     addOtherPlayers(playerInfo: any) {
@@ -221,6 +241,31 @@ export default class GameScene extends Phaser.Scene {
         }).setOrigin(0.5, 0.5);
 
         this.otherPlayerNames.set(playerInfo.id, nameText);
-        console.log('Other player added:', playerInfo.name);
+
+        if (playerInfo.picture) {
+            this.updateAvatarImage(sprite, playerInfo.picture, playerInfo.id);
+        }
+    }
+
+    private updateAvatarImage(sprite: Phaser.GameObjects.Sprite, url: string, id: string) {
+        if (!url || !url.startsWith('http')) return;
+
+        const key = `avatar_${id}_${url.substring(url.lastIndexOf('/') + 1)}`;
+
+        if (this.textures.exists(key)) {
+            sprite.setTexture(key);
+            sprite.setDisplaySize(40, 40);
+            sprite.clearTint();
+        } else {
+            this.load.image(key, url);
+            this.load.once(`complete`, () => {
+                if (sprite.active) {
+                    sprite.setTexture(key);
+                    sprite.setDisplaySize(40, 40);
+                    sprite.clearTint();
+                }
+            });
+            this.load.start();
+        }
     }
 }
