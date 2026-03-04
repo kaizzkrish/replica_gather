@@ -76,7 +76,7 @@ io.on('connection', (socket) => {
         try {
             // Upsert user in Postgres
             const res = await pool.query(
-                `INSERT INTO users (id, name, email, picture, room) 
+                `INSERT INTO replica_users (id, name, email, picture, room) 
                  VALUES ($1, $2, $3, $4, $5) 
                  ON CONFLICT (id) DO UPDATE 
                  SET name = EXCLUDED.name, email = EXCLUDED.email, picture = EXCLUDED.picture, room = EXCLUDED.room
@@ -151,7 +151,7 @@ io.on('connection', (socket) => {
             try {
                 // Persist to Postgres
                 await pool.query(
-                    `UPDATE users SET name = $1, picture = $2 WHERE id = $3`,
+                    `UPDATE replica_users SET name = $1, picture = $2 WHERE id = $3`,
                     [data.name, data.picture, player.userId]
                 );
 
@@ -183,7 +183,7 @@ io.on('connection', (socket) => {
             try {
                 // Save last position on disconnect
                 await pool.query(
-                    `UPDATE users SET last_x = $1, last_y = $2 WHERE id = $3`,
+                    `UPDATE replica_users SET last_x = $1, last_y = $2 WHERE id = $3`,
                     [player.x, player.y, player.userId]
                 );
             } catch (err) {
