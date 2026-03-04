@@ -35,17 +35,43 @@ interface Player {
 // In-memory store for active connections
 const activePlayers: Record<string, Player> = {};
 
-// Initialize Database
-initDb();
+const PORT = process.env.PORT || 3001;
+
+// Initialize Database and Start Server
+const startServer = async () => {
+    try {
+        await initDb();
+
+        server.listen(PORT, () => {
+            console.log(`Server listening on port ${PORT}`);
+        });
+    } catch (err) {
+        console.error('Failed to start server:', err);
+        process.exit(1);
+    }
+};
+
+startServer();
 
 io.on('connection', (socket) => {
     console.log('A user connected:', socket.id);
 
     socket.on('joinRoom', async (data: { room: string, name: string, picture?: string, userId: string, email?: string }) => {
-        if (!data || !data.userId) return;
+        console.log('Received joinRoom data:', data);
+        if (!data || !data.userId) {
+            console.warn('joinRoom received invalid data:', data);
+            return;
+        }
         const { room, name, picture, userId, email } = data;
 
         socket.join(room);
+
+        let playerData: Partial<Player> = {
+            x: 380,
+            y: 300,
+            name: name || 'Guest',
+            picture: picture || ''
+        };
 
         try {
             // Upsert user in Postgres
@@ -58,37 +84,46 @@ io.on('connection', (socket) => {
                 [userId, name, email, picture, room]
             );
 
-            const dbUser = res.rows[0];
-
-            const newPlayer: Player = {
-                x: dbUser.last_x,
-                y: dbUser.last_y,
-                id: socket.id,
-                userId: userId,
-                name: dbUser.name,
-                picture: dbUser.picture,
-                room: room
-            };
-
-            activePlayers[socket.id] = newPlayer;
-
-            // Filter players by room
-            const roomPlayers: Record<string, Player> = {};
-            Object.keys(activePlayers).forEach(id => {
-                const p = activePlayers[id];
-                if (p && p.room === room) {
-                    roomPlayers[id] = p;
-                }
-            });
-
-            // Sync with client
-            socket.emit('currentPlayers', roomPlayers);
-            socket.to(room).emit('newPlayer', newPlayer);
-
-            console.log(`User ${dbUser.name} (${userId}) joined room: ${room}`);
-        } catch (err) {
-            console.error('Error in joinRoom:', err);
+            if (res.rows[0]) {
+                const dbUser = res.rows[0];
+                playerData = {
+                    x: dbUser.last_x,
+                    y: dbUser.last_y,
+                    name: dbUser.name,
+                    picture: dbUser.picture
+                };
+            }
+        } catch (err: any) {
+            console.error('Database Error in joinRoom:', err.message);
+            // We continue with default playerData so the user can still play
         }
+
+        const newPlayer: Player = {
+            x: playerData.x!,
+            y: playerData.y!,
+            id: socket.id,
+            userId: userId,
+            name: playerData.name!,
+            picture: playerData.picture!,
+            room: room
+        };
+
+        activePlayers[socket.id] = newPlayer;
+
+        // Filter players by room
+        const roomPlayers: Record<string, Player> = {};
+        Object.keys(activePlayers).forEach(id => {
+            const p = activePlayers[id];
+            if (p && p.room === room) {
+                roomPlayers[id] = p;
+            }
+        });
+
+        // Sync with client
+        socket.emit('currentPlayers', roomPlayers);
+        socket.to(room).emit('newPlayer', newPlayer);
+
+        console.log(`User ${newPlayer.name} (${userId}) joined room: ${room}`);
     });
 
     socket.on('playerMovement', async (movementData: { x: number, y: number }) => {
@@ -161,7 +196,3 @@ io.on('connection', (socket) => {
     });
 });
 
-const PORT = process.env.PORT || 3001;
-server.listen(PORT, () => {
-    console.log(`Server listening on port ${PORT}`);
-});

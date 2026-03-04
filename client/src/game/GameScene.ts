@@ -57,11 +57,14 @@ export default class GameScene extends Phaser.Scene {
 
         // Listener: Initial Players
         this.socket.on('currentPlayers', (players: any) => {
-            console.log('Syncing current players:', players);
+            console.log(`Syncing current players. My ID: ${this.socket?.id}. Total incoming: ${Object.keys(players).length}`);
+            console.log('Incoming players data:', players);
             Object.keys(players).forEach((id) => {
                 if (id === this.socket?.id) {
+                    console.log('Adding local player...');
                     this.addPlayer(players[id]);
                 } else {
+                    console.log(`Adding other player: ${id}`);
                     this.addOtherPlayers(players[id]);
                 }
             });
@@ -69,17 +72,32 @@ export default class GameScene extends Phaser.Scene {
 
         // Listener: New Player
         this.socket.on('newPlayer', (playerInfo: any) => {
+            console.log('New player joined event:', playerInfo.name);
             this.addOtherPlayers(playerInfo);
         });
 
-        // NOW Join Room once listeners are ready
-        this.socket.emit('joinRoom', {
-            room: 'main-space',
-            name: this.userData?.name || this.userData?.nickname || 'Explorer',
-            picture: this.userData?.picture || '',
-            userId: this.userData?.sub, // Auth0 Unique ID
-            email: this.userData?.email
+        // Helper to join room
+        const joinRoom = () => {
+            console.log('Emitting joinRoom...');
+            this.socket?.emit('joinRoom', {
+                room: 'main-space',
+                name: this.userData?.name || this.userData?.nickname || 'Explorer',
+                picture: this.userData?.picture || '',
+                userId: this.userData?.sub, // Auth0 Unique ID
+                email: this.userData?.email
+            });
+        };
+
+        // Rejoin on connect (handles initial join and reconnects)
+        this.socket.on('connect', () => {
+            console.log('Socket connected/reconnected. ID:', this.socket?.id);
+            joinRoom();
         });
+
+        // Trigger immediately if already connected
+        if (this.socket.connected) {
+            joinRoom();
+        }
 
         this.socket.on('profileUpdated', (playerInfo: any) => {
             console.log('Profile updated for:', playerInfo.id);
@@ -210,37 +228,47 @@ export default class GameScene extends Phaser.Scene {
     }
 
     addPlayer(playerInfo: any) {
+        const x = Number(playerInfo.x);
+        const y = Number(playerInfo.y);
+        console.log(`Adding player at ${x}, ${y}`);
+
         // USE GATHER ICON AS PLAYER
-        const sprite = this.physics.add.sprite(playerInfo.x, playerInfo.y, 'playerIcon');
+        const sprite = this.physics.add.sprite(x, y, 'playerIcon');
         sprite.setDisplaySize(40, 40);
+        sprite.setDepth(10);
         this.player = sprite;
         this.player.setCollideWorldBounds(true);
 
-        this.playerNameText = this.add.text(playerInfo.x, playerInfo.y - 30, playerInfo.name, {
+        this.playerNameText = this.add.text(x, y - 30, playerInfo.name, {
             fontSize: '14px',
             color: '#ffffff',
             backgroundColor: '#00000088',
             padding: { x: 4, y: 2 }
-        }).setOrigin(0.5, 0.5);
+        }).setOrigin(0.5, 0.5).setDepth(11);
 
         if (playerInfo.picture) {
             this.updateAvatarImage(sprite, playerInfo.picture, playerInfo.id);
         }
+        console.log('Local player added successfully.');
     }
 
     addOtherPlayers(playerInfo: any) {
-        const sprite = this.add.sprite(playerInfo.x, playerInfo.y, 'playerIcon');
+        const x = Number(playerInfo.x);
+        const y = Number(playerInfo.y);
+
+        const sprite = this.add.sprite(x, y, 'playerIcon');
         sprite.setDisplaySize(40, 40);
         sprite.setTint(0xcccccc); // Slightly darker for other players
+        sprite.setDepth(9);
         (sprite as any).playerId = playerInfo.id;
         this.otherPlayers.add(sprite);
 
-        const nameText = this.add.text(playerInfo.x, playerInfo.y - 30, playerInfo.name, {
+        const nameText = this.add.text(x, y - 30, playerInfo.name, {
             fontSize: '14px',
             color: '#646cff',
             backgroundColor: '#00000088',
             padding: { x: 4, y: 2 }
-        }).setOrigin(0.5, 0.5);
+        }).setOrigin(0.5, 0.5).setDepth(11);
 
         this.otherPlayerNames.set(playerInfo.id, nameText);
 
@@ -250,7 +278,12 @@ export default class GameScene extends Phaser.Scene {
     }
 
     private updateAvatarImage(sprite: Phaser.GameObjects.Sprite, url: string, id: string) {
-        if (!url || (!url.startsWith('http') && !url.startsWith('data:image'))) return;
+        if (!url || (!url.startsWith('http') && !url.startsWith('data:image'))) {
+            // Revert to default if invalid URL
+            sprite.setTexture('playerIcon');
+            sprite.setDisplaySize(40, 40);
+            return;
+        }
 
         // Generate a stable key for the texture
         const key = url.startsWith('data:')
@@ -262,14 +295,26 @@ export default class GameScene extends Phaser.Scene {
             sprite.setDisplaySize(40, 40);
             sprite.clearTint();
         } else {
+            // Load and apply
             this.load.image(key, url);
-            this.load.once(`complete`, () => {
+
+            this.load.once(`filecomplete-image-${key}`, () => {
                 if (sprite.active) {
+                    console.log(`Image loaded for ${id}: ${key}`);
                     sprite.setTexture(key);
                     sprite.setDisplaySize(40, 40);
                     sprite.clearTint();
                 }
             });
+
+            this.load.once(`loaderror`, (file: any) => {
+                if (file.key === key) {
+                    console.warn(`Failed to load avatar for ${id}, using default icon.`);
+                    sprite.setTexture('playerIcon');
+                    sprite.setDisplaySize(40, 40);
+                }
+            });
+
             this.load.start();
         }
     }
