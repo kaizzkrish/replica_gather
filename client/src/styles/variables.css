@@ -1,0 +1,21 @@
+:root {
+    --primary-color: #646cff;
+    --primary-hover: #535bf2;
+    --bg-dark: #121212;
+    --card-bg: #1a1a1a;
+    --text-main: #ffffff;
+    --text-muted: #888888;
+    --error-color: #ff4444;
+    --success-color: #4ade80;
+    --border-radius: 12px;
+
+    /* WhatsApp specific */
+    --wa-bg: #0b141a;
+    --wa-header: #202c33;
+    --wa-green: #00a884;
+    --wa-bubble-sent: #005c4b;
+    --wa-bubble-received: #202c33;
+    --wa-text: #e9edef;
+    --wa-text-muted: #8696a0;
+    --wa-sidebar: #111b21;
+}

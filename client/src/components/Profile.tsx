@@ -45,7 +45,7 @@ const Profile: React.FC<ProfileProps> = ({ socket, onClose }) => {
         <div className="profile-overlay" onClick={onClose}>
             <div className="profile-card" onClick={(e) => e.stopPropagation()}>
                 <div className="profile-header">
-                    <button className="close-btn" onClick={onClose}>×</button>
+                    <button className="close-btn" onClick={onClose} style={{ padding: '0px' }}>×</button>
                     <h2>User Profile</h2>
                 </div>
 
@@ -55,6 +55,9 @@ const Profile: React.FC<ProfileProps> = ({ socket, onClose }) => {
                             src={editedPicture || 'https://via.placeholder.com/150'}
                             alt={user.name}
                             className="profile-picture"
+                            onError={(e) => {
+                                (e.target as HTMLImageElement).src = 'https://via.placeholder.com/150';
+                            }}
                         />
                         {isEditing && (
                             <label className="avatar-edit-overlay clickable">

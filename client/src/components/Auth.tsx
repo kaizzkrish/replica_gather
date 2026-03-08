@@ -8,7 +8,7 @@ const Auth: React.FC = () => {
         <div className="auth-overlay">
             <div className="auth-card">
                 <div className="auth-header">
-                    <h2>Welcome to Gather Replica</h2>
+                    <h2>Welcome to Collabio</h2>
                     <p>Log in or Sign up to start exploring the virtual space</p>
                 </div>
 

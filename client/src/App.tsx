@@ -5,18 +5,41 @@ import Game from './components/Game';
 import Chat from './components/Chat';
 import Auth from './components/Auth';
 import Profile from './components/Profile';
-import './App.css';
+import './styles/index.css';
 
 function App() {
   const { isAuthenticated, user, isLoading } = useAuth0();
+  const [currUser, setCurrUser] = useState<any>(null);
   const [socket, setSocket] = useState<Socket | null>(null);
   const [showProfile, setShowProfile] = useState(false);
 
   useEffect(() => {
     if (!isAuthenticated || !user) return;
 
+    // Use a local user state initially from Auth0
+    setCurrUser({
+      sub: user.sub,
+      name: user.name,
+      picture: user.picture,
+      email: user.email
+    });
+
     const newSocket = io('http://localhost:3001');
     setSocket(newSocket);
+
+    // Sync local user view with DB data immediately on joining
+    const updateLocalUser = (pData: any) => {
+      if (pData.userId === user.sub) {
+        setCurrUser((prev: any) => ({
+          ...prev,
+          name: pData.name || user.name,
+          picture: pData.picture || user.picture
+        }));
+      }
+    };
+
+    newSocket.on('profileSync', updateLocalUser);
+    newSocket.on('profileUpdated', updateLocalUser);
 
     return () => {
       newSocket.disconnect();
@@ -34,21 +57,42 @@ function App() {
       ) : (
         <>
           <div className="user-header">
-            <img
-              src={user?.picture}
-              alt={user?.name}
-              className="user-avatar-small"
-              onClick={() => setShowProfile(true)}
-            />
+            {currUser?.picture ? (
+              <img
+                src={currUser.picture}
+                alt=""
+                className="user-avatar-small"
+                style={{ objectFit: 'cover' }}
+                onClick={() => setShowProfile(true)}
+                onError={(e) => {
+                  (e.target as HTMLImageElement).style.display = 'none';
+                  const parent = (e.target as HTMLImageElement).parentElement;
+                  if (parent) {
+                    const placeholder = document.createElement('div');
+                    placeholder.className = 'user-avatar-small-placeholder';
+                    placeholder.innerText = (currUser?.name || '?')[0];
+                    placeholder.onclick = () => setShowProfile(true);
+                    parent.appendChild(placeholder);
+                  }
+                }}
+              />
+            ) : (
+              <div
+                className="user-avatar-small-placeholder"
+                onClick={() => setShowProfile(true)}
+              >
+                {(currUser?.name || user?.name || '?')[0]}
+              </div>
+            )}
             <span onClick={() => setShowProfile(true)}>
-              Welcome, <strong>{user?.name}</strong>!
+              Welcome, <strong>{currUser?.name || user?.name}</strong>!
             </span>
           </div>
           {showProfile && <Profile socket={socket} onClose={() => setShowProfile(false)} />}
-          <h1>Gather Replica</h1>
+          <h1>Collabio</h1>
           <div className="main-layout">
-            <Game socket={socket} user={user} />
-            <Chat socket={socket} />
+            <Game socket={socket} user={currUser || user} />
+            <Chat socket={socket} user={currUser || user} />
           </div>
           <div className="instructions">
             <p>Use arrow keys to move and type in chat.</p>
