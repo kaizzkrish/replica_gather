@@ -4,25 +4,38 @@ import { Socket } from 'socket.io-client';
 
 interface ProfileProps {
     socket: Socket | null;
+    currUser: any;
     onClose: () => void;
 }
 
-const Profile: React.FC<ProfileProps> = ({ socket, onClose }) => {
-    const { user, logout } = useAuth0();
+const Profile: React.FC<ProfileProps> = ({ socket, currUser, onClose }) => {
+    const { logout } = useAuth0();
     const [isEditing, setIsEditing] = useState(false);
-    const [editedName, setEditedName] = useState(user?.name || '');
-    const [editedPicture, setEditedPicture] = useState(user?.picture || '');
+    const [editedName, setEditedName] = useState(currUser?.name || '');
+    const [editedPicture, setEditedPicture] = useState(currUser?.picture || '');
+    const [customization, setCustomization] = useState(currUser?.customization || {
+        skinColor: '#ffdbac',
+        hairColor: '#4b2c20',
+        hairStyle: 'default',
+        outfitColor: '#646cff',
+        outfitId: 'basic'
+    });
 
-    if (!user) return null;
+    if (!currUser) return null;
 
     const handleSave = () => {
         if (socket) {
             socket.emit('updateProfile', {
                 name: editedName,
-                picture: editedPicture
+                picture: editedPicture,
+                customization: customization
             });
         }
         setIsEditing(false);
+    };
+
+    const handleColorChange = (key: string, value: string) => {
+        setCustomization((prev: any) => ({ ...prev, [key]: value }));
     };
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -46,14 +59,14 @@ const Profile: React.FC<ProfileProps> = ({ socket, onClose }) => {
             <div className="profile-card" onClick={(e) => e.stopPropagation()}>
                 <div className="profile-header">
                     <button className="close-btn" onClick={onClose} style={{ padding: '0px' }}>×</button>
-                    <h2>User Profile</h2>
+                    <h2>Edit Your Identity</h2>
                 </div>
 
                 <div className="profile-content">
                     <div className="profile-avatar-section">
                         <img
                             src={editedPicture || 'https://via.placeholder.com/150'}
-                            alt={user.name}
+                            alt={currUser.name}
                             className="profile-picture"
                             onError={(e) => {
                                 (e.target as HTMLImageElement).src = 'https://via.placeholder.com/150';
@@ -61,7 +74,7 @@ const Profile: React.FC<ProfileProps> = ({ socket, onClose }) => {
                         />
                         {isEditing && (
                             <label className="avatar-edit-overlay clickable">
-                                <span>Upload New</span>
+                                <span>Change Photo</span>
                                 <input
                                     type="file"
                                     accept="image/*"
@@ -87,44 +100,42 @@ const Profile: React.FC<ProfileProps> = ({ socket, onClose }) => {
                             )}
                         </div>
 
-                        {isEditing && (
-                            <div className="info-group">
-                                <label>Profile Image Source</label>
-                                <div className="image-input-container">
-                                    {editedPicture.startsWith('data:') ? (
-                                        <div className="local-upload-status">
-                                            <span>📷 Local Image Selected</span>
-                                            <button
-                                                className="clear-img-btn"
-                                                onClick={() => setEditedPicture(user.picture || '')}
-                                            >
-                                                Undo Upload
-                                            </button>
-                                        </div>
-                                    ) : (
-                                        <input
-                                            type="text"
-                                            value={editedPicture}
-                                            placeholder="Paste image URL here..."
-                                            onChange={(e) => setEditedPicture(e.target.value)}
-                                            className="edit-input"
-                                        />
-                                    )}
+                        <div className="customization-section">
+                            <h3>Avatar Design</h3>
+                            <div className="customization-grid">
+                                <div className="color-item">
+                                    <label>Skin Tone</label>
+                                    <input
+                                        type="color"
+                                        value={customization.skinColor}
+                                        disabled={!isEditing}
+                                        onChange={(e) => handleColorChange('skinColor', e.target.value)}
+                                    />
                                 </div>
-                                <span className="input-hint">Click the avatar to upload a local file instead</span>
+                                <div className="color-item">
+                                    <label>Hair Color</label>
+                                    <input
+                                        type="color"
+                                        value={customization.hairColor}
+                                        disabled={!isEditing}
+                                        onChange={(e) => handleColorChange('hairColor', e.target.value)}
+                                    />
+                                </div>
+                                <div className="color-item">
+                                    <label>Outfit Color</label>
+                                    <input
+                                        type="color"
+                                        value={customization.outfitColor}
+                                        disabled={!isEditing}
+                                        onChange={(e) => handleColorChange('outfitColor', e.target.value)}
+                                    />
+                                </div>
                             </div>
-                        )}
-
-                        <div className="info-group">
-                            <label>Email Address</label>
-                            <div className="info-value email-readonly">{user.email}</div>
                         </div>
 
                         <div className="info-group">
-                            <label>Account Status</label>
-                            <div className="info-value status-verified">
-                                {user.email_verified ? 'Verified' : 'Pending Verification'}
-                            </div>
+                            <label>Email Address</label>
+                            <div className="info-value email-readonly">{currUser.email}</div>
                         </div>
                     </div>
                 </div>
@@ -132,11 +143,11 @@ const Profile: React.FC<ProfileProps> = ({ socket, onClose }) => {
                 <div className="profile-actions">
                     {isEditing ? (
                         <div className="edit-actions">
-                            <button onClick={handleSave} className="save-btn">Save Changes</button>
+                            <button onClick={handleSave} className="save-btn">Save Avatar</button>
                             <button onClick={() => setIsEditing(false)} className="cancel-btn">Cancel</button>
                         </div>
                     ) : (
-                        <button onClick={() => setIsEditing(true)} className="edit-profile-btn">Edit Profile</button>
+                        <button onClick={() => setIsEditing(true)} className="edit-profile-btn">Customize Look</button>
                     )}
 
                     <button
@@ -145,9 +156,6 @@ const Profile: React.FC<ProfileProps> = ({ socket, onClose }) => {
                     >
                         Sign Out
                     </button>
-                    <p className="profile-note">
-                        Session remains active for 30 days.
-                    </p>
                 </div>
             </div>
         </div>

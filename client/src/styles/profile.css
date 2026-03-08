@@ -209,3 +209,48 @@
     font-size: 12px;
     cursor: pointer;
 }
+
+.customization-section {
+    margin-top: 10px;
+    padding-top: 15px;
+    border-top: 1px solid #333;
+}
+
+.customization-section h3 {
+    font-size: 0.9rem;
+    color: var(--primary-color);
+    margin-bottom: 12px;
+    text-transform: uppercase;
+}
+
+.customization-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 15px;
+}
+
+.color-item {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    align-items: center;
+}
+
+.color-item label {
+    font-size: 0.7rem;
+    color: #888;
+}
+
+.color-item input[type="color"] {
+    width: 40px;
+    height: 40px;
+    border: none;
+    background: none;
+    cursor: pointer;
+    border-radius: 8px;
+}
+
+.color-item input[type="color"]::-webkit-color-swatch {
+    border-radius: 8px;
+    border: 2px solid #333;
+}

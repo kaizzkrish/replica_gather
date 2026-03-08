@@ -32,6 +32,7 @@ interface Player {
     name: string;
     picture: string;
     room: string;
+    customization?: any;
 }
 
 // In-memory store for active connections
@@ -63,7 +64,10 @@ io.on('connection', (socket) => {
         const { room, name, picture, userId, email } = data;
         socket.join(room);
 
-        let playerData: Partial<Player> = { x: 380, y: 300, name: name || 'Explorer', picture: picture || '' };
+        let playerData: Partial<Player> = {
+            x: 380, y: 300, name: name || 'Explorer', picture: picture || '',
+            customization: { skinColor: '#ffdbac', hairColor: '#4b2c20', hairStyle: 'default', outfitColor: '#646cff', outfitId: 'basic' }
+        };
         try {
             // Priority 1: Check if user already exists in DB to avoid Auth0 overwriting manual edits
             const existingRes = await pool.query(`SELECT * FROM replica_users WHERE id = $1`, [userId]);
@@ -75,7 +79,8 @@ io.on('connection', (socket) => {
                     x: dbUser.last_x,
                     y: dbUser.last_y,
                     name: dbUser.name,
-                    picture: dbUser.picture
+                    picture: dbUser.picture,
+                    customization: dbUser.customization
                 };
 
                 // If DB has no picture but Auth0 has one (e.g. initial run after schema wipe)
@@ -103,12 +108,13 @@ io.on('connection', (socket) => {
 
         const newPlayer: Player = {
             x: playerData.x!, y: playerData.y!, id: socket.id,
-            userId: userId, name: playerData.name!, picture: playerData.picture!, room: room
+            userId: userId, name: playerData.name!, picture: playerData.picture!, room: room,
+            customization: playerData.customization
         };
         activePlayers[socket.id] = newPlayer;
 
         // Sync local user's view with their persistent DB data (rather than Auth0 fallback)
-        socket.emit('profileSync', { userId, name: newPlayer.name, picture: newPlayer.picture });
+        socket.emit('profileSync', { userId, name: newPlayer.name, picture: newPlayer.picture, customization: newPlayer.customization });
 
         // Broadcast status
         io.to(room).emit('userStatusChange', { userId, isOnline: true, lastSeen: new Date() });
@@ -189,23 +195,28 @@ io.on('connection', (socket) => {
         }
     });
 
-    socket.on('playerMovement', async (movementData: { x: number, y: number }) => {
+    socket.on('playerMovement', async (movementData: { x: number, y: number, animationKey?: string }) => {
         if (!movementData) return;
         const player = activePlayers[socket.id];
         if (player) {
             player.x = movementData.x;
             player.y = movementData.y;
-            socket.to(player.room).emit('playerMoved', player);
+            socket.to(player.room).emit('playerMoved', { ...player, animationKey: movementData.animationKey });
         }
     });
 
-    socket.on('updateProfile', async (data: { name: string, picture: string }) => {
+    socket.on('updateProfile', async (data: { name: string, picture: string, customization?: any }) => {
         const player = activePlayers[socket.id];
         if (player) {
             player.name = data.name;
             player.picture = data.picture;
+            if (data.customization) player.customization = data.customization;
+
             try {
-                await pool.query(`UPDATE replica_users SET name = $1, picture = $2 WHERE id = $3`, [data.name, data.picture, player.userId]);
+                await pool.query(
+                    `UPDATE replica_users SET name = $1, picture = $2, customization = $3 WHERE id = $4`,
+                    [data.name, data.picture, JSON.stringify(player.customization), player.userId]
+                );
                 io.to(player.room).emit('profileUpdated', player);
             } catch (err) { console.error('Update Profile Error:', err); }
         }

@@ -21,7 +21,8 @@ function App() {
       sub: user.sub,
       name: user.name,
       picture: user.picture,
-      email: user.email
+      email: user.email,
+      customization: { skinColor: '#ffdbac', hairColor: '#4b2c20', hairStyle: 'default', outfitColor: '#646cff', outfitId: 'basic' }
     });
 
     const newSocket = io('http://localhost:3001');
@@ -33,7 +34,8 @@ function App() {
         setCurrUser((prev: any) => ({
           ...prev,
           name: pData.name || user.name,
-          picture: pData.picture || user.picture
+          picture: pData.picture || user.picture,
+          customization: pData.customization || prev?.customization
         }));
       }
     };
@@ -88,7 +90,7 @@ function App() {
               Welcome, <strong>{currUser?.name || user?.name}</strong>!
             </span>
           </div>
-          {showProfile && <Profile socket={socket} onClose={() => setShowProfile(false)} />}
+          {showProfile && <Profile socket={socket} currUser={currUser} onClose={() => setShowProfile(false)} />}
           <h1>Collabio</h1>
           <div className="main-layout">
             <Game socket={socket} user={currUser || user} />

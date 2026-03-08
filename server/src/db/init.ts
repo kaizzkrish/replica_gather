@@ -13,7 +13,14 @@ export const initDb = async () => {
             last_y INTEGER DEFAULT 300,
             room VARCHAR(50) DEFAULT 'main-space',
             last_seen TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            customization JSONB DEFAULT '{
+                "skinColor": "#ffdbac",
+                "hairColor": "#4b2c20",
+                "hairStyle": "default",
+                "outfitColor": "#646cff",
+                "outfitId": "basic"
+            }'
         );`,
         `CREATE TABLE replica_messages (
             id SERIAL PRIMARY KEY,
