@@ -165,15 +165,34 @@ io.on('connection', (socket) => {
         }
     });
 
-    socket.on('chatMessage', (message: string) => {
+    socket.on('chatMessage', (data: any) => {
         const player = activePlayers[socket.id];
         if (player) {
-            io.to(player.room).emit('newMessage', {
+            const isObject = typeof data === 'object' && data !== null;
+            const message = isObject ? data.message : data;
+            const targets = isObject ? data.targets : null;
+
+            const payload = {
                 id: socket.id,
                 name: player.name,
                 message: message,
-                timestamp: new Date().toLocaleTimeString()
-            });
+                timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                isProximity: !!(targets && targets.length > 0)
+            };
+
+            if (targets && targets.length > 0) {
+                // Send to specifically targeted players in proximity
+                targets.forEach((targetId: string) => {
+                    io.to(targetId).emit('newMessage', payload);
+                });
+                // Also send back to self if not already in targets
+                if (!targets.includes(socket.id)) {
+                    socket.emit('newMessage', payload);
+                }
+            } else {
+                // Global room chat
+                io.to(player.room).emit('newMessage', payload);
+            }
         }
     });
 

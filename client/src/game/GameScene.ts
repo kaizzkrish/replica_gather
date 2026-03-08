@@ -10,7 +10,7 @@ export default class GameScene extends Phaser.Scene {
     private socket?: Socket;
     private userData?: any;
     private cursors?: Phaser.Types.Input.Keyboard.CursorKeys;
-    private interactionRadius = 250;
+    // private interactionRadius = 250; // No longer used, using 80px proximity instead
     private lastMoveTime = 0;
     private moveInterval = 200; // Time in ms between movements
     private tileSize = 40;
@@ -207,6 +207,7 @@ export default class GameScene extends Phaser.Scene {
             }
 
             // Proximity Logic (always running)
+            const nearbyPlayerIds: string[] = [];
             this.otherPlayers.getChildren().forEach((other: any) => {
                 const distance = Phaser.Math.Distance.Between(
                     this.player!.x,
@@ -217,14 +218,31 @@ export default class GameScene extends Phaser.Scene {
 
                 const nameText = this.otherPlayerNames.get(other.playerId);
 
-                if (distance < this.interactionRadius) {
+                if (distance < 81) { // 2 tiles = 80px, allow slight grace
                     other.setAlpha(1);
                     if (nameText) nameText.setAlpha(1);
+                    nearbyPlayerIds.push(other.playerId);
                 } else {
                     other.setAlpha(0.2);
                     if (nameText) nameText.setAlpha(0.2);
                 }
             });
+
+            // Dispatch event for Chat React Component
+            const eventPayload = JSON.stringify(nearbyPlayerIds);
+            if ((this as any).lastNearbyPayload !== eventPayload) {
+                (this as any).lastNearbyPayload = eventPayload;
+                window.dispatchEvent(new CustomEvent('nearby-players-change', {
+                    detail: {
+                        playerIds: nearbyPlayerIds,
+                        playerNames: nearbyPlayerIds.map(id => {
+                            // const found = this.otherPlayers.getChildren().find((o: any) => o.playerId === id);
+                            const name = this.otherPlayerNames.get(id)?.text;
+                            return name || id.substring(0, 5);
+                        })
+                    }
+                }));
+            }
         }
     }
 
