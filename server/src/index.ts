@@ -66,7 +66,7 @@ io.on('connection', (socket) => {
 
         let playerData: Partial<Player> = {
             x: 380, y: 300, name: name || 'Explorer', picture: picture || '',
-            customization: { skinColor: '#ffdbac', hairColor: '#4b2c20', hairStyle: 'default', outfitColor: '#646cff', outfitId: 'basic' }
+            customization: { skinColor: '#ffdbac', hairColor: '#4b2c20', hairStyle: 'default', outfitColor: '#646cff', outfitId: 'basic', gender: 'male' }
         };
         try {
             // Priority 1: Check if user already exists in DB to avoid Auth0 overwriting manual edits

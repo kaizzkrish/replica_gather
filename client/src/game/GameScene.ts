@@ -23,18 +23,21 @@ export default class GameScene extends Phaser.Scene {
 
     preload() {
         // Load Base Body
-        this.load.spritesheet('charBase', '/charBase.png', {
-            frameWidth: 80, frameHeight: 160
+        this.load.spritesheet('charBase', '/charBase.png?v=fixed', {
+            frameWidth: 160, frameHeight: 160
+        });
+        this.load.spritesheet('charBase_female', '/charBase_female.png', {
+            frameWidth: 160, frameHeight: 160
         });
 
         // Load Clothing
-        this.load.spritesheet('charOutfit', '/charOutfit.png', {
-            frameWidth: 80, frameHeight: 160
+        this.load.spritesheet('charOutfit', '/transparent.png', {
+            frameWidth: 160, frameHeight: 160
         });
 
         // Load Hair
-        this.load.spritesheet('charHair', '/charHair.png', {
-            frameWidth: 80, frameHeight: 160
+        this.load.spritesheet('charHair', '/transparent.png', {
+            frameWidth: 160, frameHeight: 160
         });
     }
 
@@ -42,15 +45,24 @@ export default class GameScene extends Phaser.Scene {
         if (!this.socket) return;
 
         // Create Animations
+        const baseTextures = ['charBase', 'charBase_female'];
         const directions = ['down', 'left', 'right', 'up'];
-        directions.forEach((dir, index) => {
-            // Body
-            this.anims.create({
-                key: `walk_${dir}`,
-                frames: this.anims.generateFrameNumbers('charBase', { start: index * 4, end: index * 4 + 3 }),
-                frameRate: 10,
-                repeat: -1
+
+        baseTextures.forEach(tex => {
+            const prefix = tex === 'charBase' ? '' : 'female_';
+            directions.forEach((dir, index) => {
+                // Body
+                this.anims.create({
+                    key: `${prefix}walk_${dir}`,
+                    frames: this.anims.generateFrameNumbers(tex, { start: index * 4, end: index * 4 + 3 }),
+                    frameRate: 10,
+                    repeat: -1
+                });
             });
+        });
+
+        // Outfit/Hair (Global for now)
+        directions.forEach((dir, index) => {
             // Outfit
             this.anims.create({
                 key: `outfit_walk_${dir}`,
@@ -68,9 +80,9 @@ export default class GameScene extends Phaser.Scene {
         });
 
         // Background / Grid
-        this.add.rectangle(400, 300, 800, 600, 0x242424).setDepth(-10);
+        this.add.rectangle(400, 300, 800, 600, 0xece0d1).setDepth(-100);
         const graphics = this.add.graphics();
-        graphics.lineStyle(1, 0x646cff, 0.2);
+        graphics.lineStyle(1, 0x8d6e63, 0.2);
         for (let i = 0; i < 800; i += 40) { graphics.moveTo(i, 0); graphics.lineTo(i, 600); }
         for (let j = 0; j < 600; j += 40) { graphics.moveTo(0, j); graphics.lineTo(800, j); }
         graphics.strokePath().setDepth(-5);
@@ -84,6 +96,15 @@ export default class GameScene extends Phaser.Scene {
         });
 
         this.socket.on('newPlayer', (playerInfo: any) => this.addOtherPlayers(playerInfo));
+
+        this.socket.on('profileUpdated', (pInfo: any) => {
+            if (pInfo.id === this.socket?.id) {
+                this.player?.updateCustomization(pInfo.customization);
+            } else {
+                const char = this.otherPlayers.get(pInfo.id);
+                if (char) char.updateCustomization(pInfo.customization);
+            }
+        });
 
         this.socket.on('playerMoved', (pInfo: any) => {
             const char = this.otherPlayers.get(pInfo.id);
@@ -208,7 +229,8 @@ export default class GameScene extends Phaser.Scene {
             hairColor: '#4b2c20',
             hairStyle: 'default',
             outfitColor: '#646cff',
-            outfitId: 'basic'
+            outfitId: 'basic',
+            gender: 'male'
         };
         this.player = new Character(this, Number(playerInfo.x), Number(playerInfo.y), playerInfo.name, custom);
         this.player.setDepth(10);
@@ -222,7 +244,8 @@ export default class GameScene extends Phaser.Scene {
             hairColor: '#4b2c20',
             hairStyle: 'default',
             outfitColor: '#646cff',
-            outfitId: 'basic'
+            outfitId: 'basic',
+            gender: 'male'
         };
         const char = new Character(this, Number(playerInfo.x), Number(playerInfo.y), playerInfo.name, custom);
         char.setDepth(9);

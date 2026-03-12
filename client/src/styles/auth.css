@@ -10,16 +10,16 @@
     align-items: center;
     z-index: 100;
     background-image:
-        radial-gradient(circle at 25% 25%, #646cff22 0%, transparent 50%),
-        radial-gradient(circle at 75% 75%, #2e3b8b33 0%, transparent 50%);
+        radial-gradient(circle at 25% 25%, var(--primary-color)11 0%, transparent 50%),
+        radial-gradient(circle at 75% 75%, var(--primary-hover)22 0%, transparent 50%);
 }
 
 .auth-card {
     background-color: var(--card-bg);
     padding: 40px;
     border-radius: 12px;
-    border: 1px solid #333;
-    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+    border: 1px solid var(--primary-color);
+    box-shadow: 0 10px 40px rgba(121, 85, 72, 0.15);
     width: 100%;
     max-width: 400px;
     text-align: center;
@@ -28,7 +28,7 @@
 .auth-header h2 {
     font-size: 2rem;
     margin-bottom: 8px;
-    color: #fff;
+    color: var(--text-main);
 }
 
 .auth-header p {
@@ -52,15 +52,15 @@
 .form-group label {
     font-size: 0.9rem;
     font-weight: 500;
-    color: #ccc;
+    color: var(--text-muted);
 }
 
 .form-group input {
     padding: 12px;
     border-radius: 6px;
-    border: 1px solid #333;
-    background-color: #0f0f0f;
-    color: #fff;
+    border: 1px solid var(--primary-color);
+    background-color: #fff;
+    color: var(--text-main);
     transition: border-color 0.2s;
 }
 

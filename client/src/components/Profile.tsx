@@ -18,7 +18,8 @@ const Profile: React.FC<ProfileProps> = ({ socket, currUser, onClose }) => {
         hairColor: '#4b2c20',
         hairStyle: 'default',
         outfitColor: '#646cff',
-        outfitId: 'basic'
+        outfitId: 'basic',
+        gender: 'male'
     });
 
     if (!currUser) return null;
@@ -129,6 +130,18 @@ const Profile: React.FC<ProfileProps> = ({ socket, currUser, onClose }) => {
                                         disabled={!isEditing}
                                         onChange={(e) => handleColorChange('outfitColor', e.target.value)}
                                     />
+                                </div>
+                                <div className="color-item">
+                                    <label>Character Type</label>
+                                    <select
+                                        value={customization.gender}
+                                        disabled={!isEditing}
+                                        onChange={(e) => handleColorChange('gender', e.target.value)}
+                                        className="gender-select"
+                                    >
+                                        <option value="male">Male</option>
+                                        <option value="female">Female</option>
+                                    </select>
                                 </div>
                             </div>
                         </div>

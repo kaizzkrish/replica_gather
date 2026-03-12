@@ -4,7 +4,7 @@
     left: 0;
     width: 100vw;
     height: 100vh;
-    background-color: rgba(0, 0, 0, 0.85);
+    background-color: rgba(62, 39, 35, 0.8);
     display: flex;
     justify-content: center;
     align-items: center;
@@ -17,8 +17,8 @@
     width: 100%;
     max-width: 450px;
     border-radius: 20px;
-    border: 1px solid #333;
-    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+    border: 1px solid var(--primary-color);
+    box-shadow: 0 25px 50px -12px rgba(121, 85, 72, 0.3);
     overflow: hidden;
     animation: slideUp 0.3s ease-out;
 }
@@ -37,17 +37,17 @@
 
 .profile-header {
     padding: 24px;
-    background: linear-gradient(to right, #646cff22, transparent);
+    background: linear-gradient(to right, var(--primary-color)22, transparent);
     display: flex;
     justify-content: space-between;
     align-items: center;
-    border-bottom: 1px solid #333;
+    border-bottom: 1px solid var(--primary-color);
 }
 
 .profile-header h2 {
     margin: 0;
     font-size: 1.5rem;
-    color: #fff;
+    color: var(--text-main);
 }
 
 .close-btn {
@@ -66,7 +66,7 @@
 
 .profile-content {
     padding: 32px;
-    color: #eee;
+    color: var(--text-main);
 }
 
 .profile-avatar-section {
@@ -123,11 +123,11 @@
 
 .info-value {
     font-size: 1.1rem;
-    color: #fff;
-    background-color: #242424;
+    color: var(--text-main);
+    background-color: var(--wa-sidebar);
     padding: 10px 14px;
     border-radius: 8px;
-    border: 1px solid #333;
+    border: 1px solid var(--primary-color);
 }
 
 .status-verified {
@@ -188,10 +188,10 @@
 .edit-input {
     width: 100%;
     padding: 10px 14px;
-    background-color: #0f0f0f;
+    background-color: #fff;
     border: 1px solid var(--primary-color);
     border-radius: 8px;
-    color: white;
+    color: var(--text-main);
 }
 
 .avatar-edit-overlay {
@@ -213,7 +213,7 @@
 .customization-section {
     margin-top: 10px;
     padding-top: 15px;
-    border-top: 1px solid #333;
+    border-top: 1px solid var(--primary-color);
 }
 
 .customization-section h3 {
@@ -225,8 +225,8 @@
 
 .customization-grid {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 15px;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 20px;
 }
 
 .color-item {
@@ -252,5 +252,21 @@
 
 .color-item input[type="color"]::-webkit-color-swatch {
     border-radius: 8px;
-    border: 2px solid #333;
+    border: 2px solid var(--primary-color);
+}
+
+.gender-select {
+    width: 100%;
+    padding: 10px;
+    border-radius: 8px;
+    border: 1px solid var(--primary-color);
+    background-color: #fff;
+    color: var(--text-main);
+    font-size: 0.9rem;
+    cursor: pointer;
+}
+
+.gender-select:disabled {
+    background-color: var(--wa-sidebar);
+    cursor: not-allowed;
 }

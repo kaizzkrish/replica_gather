@@ -14,5 +14,5 @@ export const config: Phaser.Types.Core.GameConfig = {
     },
     scene: [],
     parent: 'game-container',
-    backgroundColor: '#1a1a1a'
+    backgroundColor: '#f5f5dc'
 };

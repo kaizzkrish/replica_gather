@@ -52,12 +52,12 @@ h1 {
     background-color: var(--card-bg);
     padding: 8px 16px;
     border-radius: 20px;
-    border: 1px solid #333;
+    border: 1px solid var(--primary-color);
 }
 
 .user-header span {
     cursor: pointer;
-    color: #fff;
+    color: var(--text-main);
 }
 
 .user-header span:hover {
