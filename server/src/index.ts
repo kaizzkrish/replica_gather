@@ -17,7 +17,11 @@ const origins = process.env.CORS_ORIGINS?.split(',') || [
     "https://colla-bio.netlify.app"
 ];
 
-app.use(cors({ origin: origins }));
+app.use(cors({ 
+    origin: origins,
+    credentials: true,
+    allowedHeaders: ['ngrok-skip-browser-warning', 'Content-Type', 'Authorization']
+}));
 app.use(express.json());
 
 app.get('/', (req, res) => {
@@ -28,7 +32,9 @@ const server = http.createServer(app);
 const io = new Server(server, {
     cors: {
         origin: origins,
-        methods: ["GET", "POST"]
+        methods: ["GET", "POST"],
+        credentials: true,
+        allowedHeaders: ['ngrok-skip-browser-warning']
     }
 });
 
