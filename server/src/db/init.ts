@@ -2,9 +2,7 @@ import pool from './pool.js';
 
 export const initDb = async () => {
     const queries = [
-        `DROP TABLE IF EXISTS replica_messages;`,
-        `DROP TABLE IF EXISTS replica_users;`,
-        `CREATE TABLE replica_users (
+        `CREATE TABLE IF NOT EXISTS replica_users (
             id VARCHAR(255) PRIMARY KEY,
             name VARCHAR(255),
             email VARCHAR(255),
@@ -22,7 +20,7 @@ export const initDb = async () => {
                 "outfitId": "basic"
             }'
         );`,
-        `CREATE TABLE replica_messages (
+        `CREATE TABLE IF NOT EXISTS replica_messages (
             id SERIAL PRIMARY KEY,
             sender_id VARCHAR(255) NOT NULL,
             sender_name VARCHAR(255),

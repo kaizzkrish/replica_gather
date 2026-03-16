@@ -11,7 +11,12 @@ dotenv.config();
 // Version: 1.0.1 - Universal Standard
 
 const app = express();
-const origins = process.env.CORS_ORIGINS?.split(',') || ["http://localhost:5173", "http://localhost:5174"];
+const origins = process.env.CORS_ORIGINS?.split(',') || [
+    "http://localhost:5173", 
+    "http://localhost:5174",
+    "http://localhost:8080",
+    "https://ubiquitous-pony-d8976a.netlify.app"
+];
 
 app.use(cors({ origin: origins }));
 app.use(express.json());

@@ -25,7 +25,8 @@ function App() {
       customization: { skinColor: '#ffdbac', hairColor: '#4b2c20', hairStyle: 'default', outfitColor: '#646cff', outfitId: 'basic' }
     });
 
-    const newSocket = io('http://localhost:3001');
+    const socketUrl = import.meta.env.VITE_API_URL || (import.meta.env.PROD ? '/' : 'http://localhost:3001');
+    const newSocket = io(socketUrl);
     setSocket(newSocket);
 
     // Sync local user view with DB data immediately on joining
