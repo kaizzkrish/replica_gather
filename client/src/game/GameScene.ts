@@ -39,6 +39,14 @@ export default class GameScene extends Phaser.Scene {
         this.load.spritesheet('charHair', '/transparent.png', {
             frameWidth: 160, frameHeight: 160
         });
+
+        this.load.on('loaderror', (file: any) => {
+            console.error('❌ Error loading asset:', file.src);
+        });
+
+        this.load.on('complete', () => {
+            console.log('✅ All assets loaded successfully');
+        });
     }
 
     create() {
@@ -89,6 +97,7 @@ export default class GameScene extends Phaser.Scene {
 
         // Listeners
         this.socket.on('currentPlayers', (players: any) => {
+            console.log('👥 Current Players received:', Object.keys(players).length, players);
             Object.keys(players).forEach((id) => {
                 if (id === this.socket?.id) this.addPlayer(players[id]);
                 else this.addOtherPlayers(players[id]);
@@ -232,7 +241,11 @@ export default class GameScene extends Phaser.Scene {
             outfitId: 'basic',
             gender: 'male'
         };
-        this.player = new Character(this, Number(playerInfo.x), Number(playerInfo.y), playerInfo.name, custom);
+        const x = isNaN(Number(playerInfo.x)) ? 400 : Number(playerInfo.x);
+        const y = isNaN(Number(playerInfo.y)) ? 300 : Number(playerInfo.y);
+        
+        console.log(`👤 Adding player: ${playerInfo.name} at (${x}, ${y})`);
+        this.player = new Character(this, x, y, playerInfo.name, custom);
         this.player.setDepth(10);
     }
 
@@ -247,7 +260,11 @@ export default class GameScene extends Phaser.Scene {
             outfitId: 'basic',
             gender: 'male'
         };
-        const char = new Character(this, Number(playerInfo.x), Number(playerInfo.y), playerInfo.name, custom);
+        const x = isNaN(Number(playerInfo.x)) ? 400 : Number(playerInfo.x);
+        const y = isNaN(Number(playerInfo.y)) ? 300 : Number(playerInfo.y);
+
+        console.log(`👥 Adding other player: ${playerInfo.name} at (${x}, ${y})`);
+        const char = new Character(this, x, y, playerInfo.name, custom);
         char.setDepth(9);
         char.syncAlpha(0.2);
         this.otherPlayers.set(playerInfo.id, char);

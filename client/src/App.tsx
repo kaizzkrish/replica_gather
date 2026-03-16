@@ -41,6 +41,10 @@ function App() {
       }
     };
 
+    newSocket.on('connect', () => console.log('✅ Connected to Server:', newSocket.id));
+    newSocket.on('connect_error', (err) => console.error('❌ Connection Error:', err));
+    newSocket.on('disconnect', () => console.log('🔌 Disconnected from Server'));
+
     newSocket.on('profileSync', updateLocalUser);
     newSocket.on('profileUpdated', updateLocalUser);
 
