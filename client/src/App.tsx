@@ -26,7 +26,11 @@ function App() {
     });
 
     const socketUrl = import.meta.env.VITE_API_URL || (import.meta.env.PROD ? '/' : 'http://localhost:3001');
-    const newSocket = io(socketUrl);
+    const newSocket = io(socketUrl, {
+      extraHeaders: {
+        "ngrok-skip-browser-warning": "true"
+      }
+    });
     setSocket(newSocket);
 
     // Sync local user view with DB data immediately on joining
