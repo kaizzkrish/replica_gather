@@ -20,6 +20,10 @@ const origins = process.env.CORS_ORIGINS?.split(',') || [
 app.use(cors({ origin: origins }));
 app.use(express.json());
 
+app.get('/', (req, res) => {
+    res.send('Replica Gather Server is running!');
+});
+
 const server = http.createServer(app);
 const io = new Server(server, {
     cors: {
