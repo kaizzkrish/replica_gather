@@ -13,9 +13,8 @@ dotenv.config();
 const app = express();
 const origins = process.env.CORS_ORIGINS?.split(',') || [
     "http://localhost:5173", 
-    "http://localhost:5174",
     "http://localhost:8080",
-    "https://ubiquitous-pony-d8976a.netlify.app"
+    "https://colla-bio.netlify.app"
 ];
 
 app.use(cors({ origin: origins }));
