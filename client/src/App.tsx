@@ -5,6 +5,7 @@ import Game from './components/Game';
 import Chat from './components/Chat';
 import Auth from './components/Auth';
 import Profile from './components/Profile';
+import ProximityAudio from './components/ProximityAudio';
 import './styles/index.css';
 
 function App() {
@@ -104,6 +105,7 @@ function App() {
           <div className="main-layout">
             <Game socket={socket} user={currUser || user} />
             <Chat socket={socket} user={currUser || user} />
+            <ProximityAudio socket={socket} />
           </div>
           <div className="instructions">
             <p>Use arrow keys to move and type in chat.</p>

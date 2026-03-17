@@ -11,10 +11,13 @@
   },
   "dependencies": {
     "@auth0/auth0-react": "^2.15.0",
+    "@types/simple-peer": "^9.11.9",
+    "buffer": "^6.0.3",
     "jimp": "^1.6.0",
     "phaser": "^3.90.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
+    "simple-peer": "^9.11.1",
     "socket.io-client": "^4.8.3"
   },
   "devDependencies": {

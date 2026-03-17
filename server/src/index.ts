@@ -236,6 +236,14 @@ io.on('connection', (socket) => {
         }
     });
 
+    socket.on('call-user', (data: { to: string, signal: any, from: string }) => {
+        io.to(data.to).emit('incoming-call', { signal: data.signal, from: data.from });
+    });
+
+    socket.on('answer-call', (data: { to: string, signal: any, from: string }) => {
+        io.to(data.to).emit('call-accepted', { signal: data.signal, from: data.from });
+    });
+
     socket.on('chatMessage', async (data: any) => {
         const player = activePlayers[socket.id];
         if (player) {
