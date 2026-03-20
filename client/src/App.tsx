@@ -28,6 +28,8 @@ function App() {
 
     const socketUrl = import.meta.env.VITE_API_URL || (import.meta.env.PROD ? '/' : 'http://localhost:3001');
     const newSocket = io(socketUrl, {
+      transports: ['websocket', 'polling'],
+      withCredentials: true,
       extraHeaders: {
         "ngrok-skip-browser-warning": "true"
       }
@@ -101,7 +103,7 @@ function App() {
             </span>
           </div>
           {showProfile && <Profile socket={socket} currUser={currUser} onClose={() => setShowProfile(false)} />}
-          <h1>Collabio</h1>
+          <h1>Our princess Home</h1>
           <div className="main-layout">
             <Game socket={socket} user={currUser || user} />
             <Chat socket={socket} user={currUser || user} />

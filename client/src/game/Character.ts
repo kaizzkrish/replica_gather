@@ -19,29 +19,29 @@ export class Character extends Phaser.GameObjects.Container {
     constructor(scene: Phaser.Scene, x: number, y: number, name: string, customization: Customization) {
         super(scene, x, y);
 
-        // 1. Base Body Layer (Now our full "Proper" character)
-        this.bodySprite = scene.add.sprite(0, 0, 'charBase', 0);
-        this.bodySprite.setTint(0xffffff); // No tint, use original colors
-        this.bodySprite.setDisplaySize(64, 64); // Sized to fit game tiles
+        // 1. Base Body Layer
+        this.bodySprite = scene.add.sprite(0, -10, 'charBase', 0); // Shifted UP slightly for chair alignment
+        this.bodySprite.setTint(0xffffff);
+        this.bodySprite.setDisplaySize(54, 54); // Made a bit smaller for better scale
         this.bodySprite.setBlendMode(Phaser.BlendModes.NORMAL);
         this.bodySprite.setDepth(1);
 
-        // 2. Clothing Layer (Hidden for now until we have proper matching layers)
-        this.clothing = scene.add.sprite(0, 0, 'charOutfit', 0);
+        // 2. Clothing Layer (Shift with body)
+        this.clothing = scene.add.sprite(0, -10, 'charOutfit', 0);
         this.clothing.setAlpha(0);
         this.clothing.setDepth(2);
 
-        // 3. Hair Layer (Hidden for now)
-        this.hair = scene.add.sprite(0, 0, 'charHair', 0);
+        // 3. Hair Layer (Shift with body)
+        this.hair = scene.add.sprite(0, -10, 'charHair', 0);
         this.hair.setAlpha(0);
         this.hair.setDepth(3);
 
         // 4. Name Label
-        this.nameText = scene.add.text(0, -45, name, {
-            fontSize: '14px',
-            color: '#3e2723',
-            backgroundColor: '#fff8e1aa',
-            padding: { x: 4, y: 2 }
+        this.nameText = scene.add.text(0, -48, name, {
+            fontSize: '11px', // Slightly smaller text for better scale
+            color: '#ffffff',
+            backgroundColor: '#000000aa',
+            padding: { x: 5, y: 1 }
         }).setOrigin(0.5, 0.5);
         this.nameText.setDepth(4);
 

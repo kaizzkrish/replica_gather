@@ -11,14 +11,23 @@ dotenv.config();
 // Version: 1.0.1 - Universal Standard
 
 const app = express();
-const origins = process.env.CORS_ORIGINS?.split(',') || [
-    "http://localhost:5173", 
+const origins = [
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
     "http://localhost:8080",
     "https://colla-bio.netlify.app"
 ];
 
 app.use(cors({ 
-    origin: origins,
+    origin: (origin, callback) => {
+        // Allow requests with no origin (like mobile apps or curl)
+        if (!origin) return callback(null, true);
+        if (origins.indexOf(origin) !== -1 || origin.startsWith('http://localhost') || origin.includes('ngrok')) {
+            callback(null, true);
+        } else {
+            callback(new Error('Not allowed by CORS'));
+        }
+    },
     credentials: true,
     allowedHeaders: ['ngrok-skip-browser-warning', 'Content-Type', 'Authorization']
 }));
@@ -31,10 +40,9 @@ app.get('/', (req, res) => {
 const server = http.createServer(app);
 const io = new Server(server, {
     cors: {
-        origin: origins,
+        origin: "*", // More permissive for dev
         methods: ["GET", "POST"],
-        credentials: true,
-        allowedHeaders: ['ngrok-skip-browser-warning']
+        credentials: true
     }
 });
 
@@ -164,6 +172,14 @@ io.on('connection', (socket) => {
 
         socket.emit('currentPlayers', roomPlayers);
         socket.to(room).emit('newPlayer', newPlayer);
+
+        // Sync Space Settings (Home Name)
+        try {
+            const settingsRes = await pool.query(`SELECT home_name FROM replica_space_settings WHERE id = $1`, [room]);
+            if (settingsRes.rows[0]) {
+                socket.emit('homeNameUpdated', { name: settingsRes.rows[0].home_name });
+            }
+        } catch (err) { console.error('Fetch Space Settings Error:', err); }
     });
 
     socket.on('requestChatHistory', async () => {
@@ -234,6 +250,18 @@ io.on('connection', (socket) => {
                 io.to(player.room).emit('profileUpdated', player);
             } catch (err) { console.error('Update Profile Error:', err); }
         }
+    });
+
+    socket.on('updateHomeName', async (data: { name: string, room?: string }) => {
+        const player = activePlayers[socket.id];
+        const room = data.room || player?.room || 'main-space';
+        try {
+            await pool.query(
+                `UPDATE replica_space_settings SET home_name = $1 WHERE id = $2`,
+                [data.name, room]
+            );
+            io.to(room).emit('homeNameUpdated', { name: data.name });
+        } catch (err) { console.error('Update Home Name Error:', err); }
     });
 
     socket.on('call-user', (data: { to: string, signal: any, from: string }) => {

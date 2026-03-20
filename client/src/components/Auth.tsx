@@ -6,21 +6,24 @@ const Auth: React.FC = () => {
 
     return (
         <div className="auth-overlay">
-            <div className="auth-card">
+            <div className="auth-card animated-home-card">
+                <div className="auth-logo-container">
+                    <img src="/home_logo.png" alt="Home" className="home-hero-logo" />
+                </div>
                 <div className="auth-header">
-                    <h2>Welcome to Collabio</h2>
-                    <p>Log in or Sign up to start exploring the virtual space</p>
+                    <h2>Welcome Home</h2>
+                    <p>Step into your virtual workspace and explore the rooms.</p>
                 </div>
 
                 <div className="auth-actions">
                     <button
                         onClick={() => loginWithRedirect()}
-                        className="auth-submit-btn"
+                        className="auth-submit-btn explorer-btn"
                     >
-                        Log In / Sign Up
+                        Enter Virtual Home
                     </button>
                     <p className="auth-footer-text">
-                        Powered by Auth0
+                        Kitchen • Dining • Office • Gaming
                     </p>
                 </div>
             </div>

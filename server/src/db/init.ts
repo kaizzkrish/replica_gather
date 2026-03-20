@@ -29,7 +29,12 @@ export const initDb = async () => {
             room VARCHAR(50) DEFAULT 'main-space',
             is_read BOOLEAN DEFAULT false,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        );`
+        );`,
+        `CREATE TABLE IF NOT EXISTS replica_space_settings (
+            id VARCHAR(50) PRIMARY KEY DEFAULT 'main-space',
+            home_name VARCHAR(255) DEFAULT 'SRIKRISHNAN''S LUXURY HOME'
+        );`,
+        `INSERT INTO replica_space_settings (id, home_name) VALUES ('main-space', 'SRIKRISHNAN''S LUXURY HOME') ON CONFLICT DO NOTHING;`
     ];
 
     try {
