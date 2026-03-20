@@ -201,7 +201,6 @@ export default class GameScene extends Phaser.Scene {
             if (currentRoom && currentRoom.name !== this.currentRoomName) {
                 this.currentRoomName = currentRoom.name;
                 this.updateRoomUI(currentRoom.name);
-                this.cameras.main.flash(200, 255, 255, 255, false);
             } else if (!currentRoom && this.currentRoomName !== '🏠 Home') {
                 this.currentRoomName = '🏠 Home';
                 this.updateRoomUI('🏠 Home');
@@ -266,11 +265,10 @@ export default class GameScene extends Phaser.Scene {
                 const distance = Phaser.Math.Distance.Between(this.player!.x, this.player!.y, char.x, char.y);
                 const isClose = distance < 120;
 
+                char.syncAlpha(1); // Always visible
+
                 if (isSamePrivate || (isClose && (!pRoom?.private && !cRoom?.private))) {
-                    char.syncAlpha(1);
                     nearbyIds.push(id);
-                } else {
-                    char.syncAlpha(0.15);
                 }
             });
 
