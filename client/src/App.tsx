@@ -23,7 +23,6 @@ function App() {
     email: `guest-${guestUserId}@example.com`
   } : null);
 
-  const isGuestMode = !authIsAuthenticated && isGuestMode_Url;
   const isLoading = authIsLoading;
 
   const [currUser, setCurrUser] = useState<any>(null);
