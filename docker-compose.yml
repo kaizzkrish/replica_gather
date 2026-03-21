@@ -23,9 +23,9 @@ services:
     environment:
       - DATABASE_URL=${DATABASE_URL:-postgres://postgres:postgres@db:5432/replica_gather}
       - PORT=${SERVER_PORT:-3001}
-      - CORS_ORIGINS=${CORS_ORIGINS:-http://localhost:8080}
-    ports:
-      - "${SERVER_PORT:-3001}:${SERVER_PORT:-3001}"
+      - CORS_ORIGINS=${CORS_ORIGINS:-*}
+    expose:
+      - "3001"
     depends_on:
       db:
         condition: service_healthy
@@ -36,10 +36,31 @@ services:
       args:
         - VITE_API_URL=${VITE_API_URL:-http://localhost:3001}
     restart: always
-    ports:
-      - "${CLIENT_PORT:-8080}:80"
+    expose:
+      - "80"
     depends_on:
       - server
+
+  nginx:
+    image: nginx:stable-alpine
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./deploy/nginx/default.conf:/etc/nginx/conf.d/default.conf
+      - ./deploy/certbot/conf:/etc/letsencrypt
+      - ./deploy/certbot/www:/var/www/certbot
+    depends_on:
+      - client
+      - server
+
+  certbot:
+    image: certbot/certbot
+    volumes:
+      - ./deploy/certbot/conf:/etc/letsencrypt
+      - ./deploy/certbot/www:/var/www/certbot
+    entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done;'"
 
 volumes:
   postgres_data:
