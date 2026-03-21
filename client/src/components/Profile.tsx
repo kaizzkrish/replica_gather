@@ -14,10 +14,10 @@ const Profile: React.FC<ProfileProps> = ({ socket, currUser, onClose }) => {
     const [editedName, setEditedName] = useState(currUser?.name || '');
     const [editedPicture, setEditedPicture] = useState(currUser?.picture || '');
     const [customization, setCustomization] = useState(currUser?.customization || {
-        skinColor: '#ffdbac',
-        hairColor: '#4b2c20',
+        skinColor: '#ffffff', // Default white (no tint)
+        hairColor: '#ffffff',
         hairStyle: 'default',
-        outfitColor: '#646cff',
+        outfitColor: '#ffffff',
         outfitId: 'basic',
         gender: 'male'
     });
@@ -35,8 +35,8 @@ const Profile: React.FC<ProfileProps> = ({ socket, currUser, onClose }) => {
         setIsEditing(false);
     };
 
-    const handleColorChange = (key: string, value: string) => {
-        setCustomization((prev: any) => ({ ...prev, [key]: value }));
+    const handleGenderChange = (gender: 'male' | 'female') => {
+        setCustomization((prev: any) => ({ ...prev, gender }));
     };
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -64,94 +64,61 @@ const Profile: React.FC<ProfileProps> = ({ socket, currUser, onClose }) => {
             <div className="profile-card premium-card" onClick={(e) => e.stopPropagation()}>
                 <div className="profile-header">
                     <button className="close-btn" onClick={onClose}>×</button>
-                    <h2>Profile Settings</h2>
+                    <h2>Account Settings</h2>
                 </div>
 
                 <div className="profile-content">
-                    <div className="profile-top-row">
-                        <div className="sidebar-avatar">
+                    <div className="profile-avatar-center">
+                        <div className="avatar-wrapper">
                             <img
                                 src={editedPicture || 'https://cdn-icons-png.flaticon.com/512/1144/1144760.png'}
                                 alt=""
                                 className="profile-avatar-large"
                             />
                             {isEditing && (
-                                <div className="avatar-actions-v2">
-                                    <label className="action-label upload-btn">
-                                        Change
+                                <div className="avatar-edit-controls">
+                                    <label className="icon-action-btn">
+                                        📷
                                         <input type="file" accept="image/*" onChange={handleFileChange} style={{ display: 'none' }} />
                                     </label>
                                     {editedPicture && (
-                                        <button className="remove-photo-btn" onClick={handleRemovePicture}>Remove</button>
+                                        <button className="icon-action-btn delete" onClick={handleRemovePicture}>🗑️</button>
                                     )}
                                 </div>
                             )}
                         </div>
-
-                        <div className="main-info">
-                            <div className="input-group">
-                                <label>Your Name</label>
-                                <input
-                                    type="text"
-                                    value={editedName}
-                                    disabled={!isEditing}
-                                    onChange={(e) => setEditedName(e.target.value)}
-                                    placeholder="Enter your name"
-                                    className="premium-input"
-                                />
-                            </div>
-
-                            <div className="input-group">
-                                <label>Character Type</label>
-                                <div className="gender-toggle-buttons">
-                                    <button 
-                                        className={`gender-btn ${customization.gender === 'male' ? 'active' : ''}`}
-                                        disabled={!isEditing}
-                                        onClick={() => handleColorChange('gender', 'male')}
-                                    >
-                                        👦 Male
-                                    </button>
-                                    <button 
-                                        className={`gender-btn ${customization.gender === 'female' ? 'active' : ''}`}
-                                        disabled={!isEditing}
-                                        onClick={() => handleColorChange('gender', 'female')}
-                                    >
-                                        👧 Female
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
                     </div>
 
-                    <div className="customization-group">
-                        <h3>Vibe & Style</h3>
-                        <div className="mini-grid">
-                            <div className="vibe-item">
-                                <label>Skin</label>
-                                <input
-                                    type="color"
-                                    value={customization.skinColor}
+                    <div className="form-section">
+                        <div className="input-group">
+                            <label>Display Name</label>
+                            <input
+                                type="text"
+                                value={editedName}
+                                disabled={!isEditing}
+                                onChange={(e) => setEditedName(e.target.value)}
+                                placeholder="What's your name?"
+                                className="premium-input"
+                            />
+                        </div>
+
+                        <div className="input-group">
+                            <label>In-Game Character</label>
+                            <div className="gender-toggle-buttons">
+                                <button 
+                                    className={`gender-btn ${customization.gender === 'male' ? 'active' : ''}`}
                                     disabled={!isEditing}
-                                    onChange={(e) => handleColorChange('skinColor', e.target.value)}
-                                />
-                            </div>
-                            <div className="vibe-item">
-                                <label>Hair</label>
-                                <input
-                                    type="color"
-                                    value={customization.hairColor}
+                                    onClick={() => handleGenderChange('male')}
+                                >
+                                    👦 Male
+                                </button>
+                                <button 
+                                    className={`gender-btn ${customization.gender === 'female' ? 'active' : ''}`}
                                     disabled={!isEditing}
-                                    onChange={(e) => handleColorChange('hairColor', e.target.value)}
-                                />
-                            </div>
-                            <div className="vibe-item">
-                                <label>Suit</label>
-                                <input
-                                    type="color"
-                                    value={customization.outfitColor}
-                                    disabled={!isEditing}
-                                    onChange={(e) => handleColorChange('outfitColor', e.target.value)}
-                                />
+                                    onClick={() => handleGenderChange('female')}
+                                >
+                                    👧 Female
+                                </button>
                             </div>
                         </div>
                     </div>
@@ -167,7 +134,9 @@ const Profile: React.FC<ProfileProps> = ({ socket, currUser, onClose }) => {
                         <button onClick={() => setIsEditing(true)} className="edit-p-btn">Edit Profile</button>
                     )}
                     
-                    <button onClick={() => logout()} className="p-signout-btn">Sign Out</button>
+                    <div className="footer-links">
+                        <button onClick={() => logout()} className="p-signout-btn">Sign Out</button>
+                    </div>
                 </div>
             </div>
         </div>
