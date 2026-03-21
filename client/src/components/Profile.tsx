@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Socket } from 'socket.io-client';
 import { useAuth } from '../hooks/useAuth';
+import { MALE_STYLES, FEMALE_STYLES, type StylePreset } from '../config/characterStyles';
 
 interface ProfileProps {
     socket: Socket | null;
@@ -36,7 +37,23 @@ const Profile: React.FC<ProfileProps> = ({ socket, currUser, onClose }) => {
     };
 
     const handleGenderChange = (gender: 'male' | 'female') => {
-        setCustomization((prev: any) => ({ ...prev, gender }));
+        const defaultStyle = (gender === 'male' ? MALE_STYLES : FEMALE_STYLES)[0];
+        setCustomization((prev: any) => ({
+            ...prev,
+            gender,
+            skinColor: defaultStyle.skinColor,
+            hairColor: defaultStyle.hairColor,
+            outfitColor: defaultStyle.outfitColor
+        }));
+    };
+
+    const selectStyle = (style: StylePreset) => {
+        setCustomization((prev: any) => ({
+            ...prev,
+            skinColor: style.skinColor,
+            hairColor: style.hairColor,
+            outfitColor: style.outfitColor
+        }));
     };
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -105,20 +122,42 @@ const Profile: React.FC<ProfileProps> = ({ socket, currUser, onClose }) => {
                         <div className="input-group">
                             <label>In-Game Character</label>
                             <div className="gender-toggle-buttons">
-                                <button 
+                                <button
                                     className={`gender-btn ${customization.gender === 'male' ? 'active' : ''}`}
                                     disabled={!isEditing}
                                     onClick={() => handleGenderChange('male')}
                                 >
                                     👦 Male
                                 </button>
-                                <button 
+                                <button
                                     className={`gender-btn ${customization.gender === 'female' ? 'active' : ''}`}
                                     disabled={!isEditing}
                                     onClick={() => handleGenderChange('female')}
                                 >
                                     👧 Female
                                 </button>
+                            </div>
+                        </div>
+
+                        <div className="style-gallery-section">
+                            <label>Style Collection (10 Variants)</label>
+                            <div className="styles-grid-scroller">
+                                {(customization.gender === 'male' ? MALE_STYLES : FEMALE_STYLES).map((s) => (
+                                    <button
+                                        key={s.id}
+                                        className={`style-item-card ${customization.outfitColor === s.outfitColor && customization.hairColor === s.hairColor ? 'selected' : ''}`}
+                                        disabled={!isEditing}
+                                        onClick={() => selectStyle(s)}
+                                        title={s.name}
+                                    >
+                                        <div className="style-emoji-bubble">{s.previewEmoji}</div>
+                                        <div className="style-preview-colors">
+                                            <span style={{ background: s.outfitColor }}></span>
+                                            <span style={{ background: s.hairColor }}></span>
+                                        </div>
+                                        <span className="style-name-tag">{s.name}</span>
+                                    </button>
+                                ))}
                             </div>
                         </div>
                     </div>
