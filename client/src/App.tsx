@@ -38,7 +38,15 @@ function App() {
       customization: { skinColor: '#ffdbac', hairColor: '#4b2c20', hairStyle: 'default', outfitColor: '#646cff', outfitId: 'basic' }
     });
 
-    const socketUrl = import.meta.env.VITE_API_URL || (import.meta.env.PROD ? '/' : 'http://localhost:707');
+    let socketUrl = import.meta.env.VITE_API_URL || (import.meta.env.PROD ? '/' : 'http://localhost:707');
+    
+    // 🔥 Fix for IP-based deployment: If browser is on an IP, but socket says localhost, swap it!
+    const isIP = /^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$/.test(window.location.hostname);
+    if (isIP && (socketUrl.includes('localhost') || socketUrl.startsWith('/'))) {
+      socketUrl = `http://${window.location.hostname}:707`;
+      console.log('📡 Dynamic IP Detection - Connecting to:', socketUrl);
+    }
+
     const newSocket = io(socketUrl, {
       transports: ['websocket', 'polling'],
       withCredentials: true,

@@ -12,6 +12,11 @@ const ProximityAudio = ({ socket }: ProximityAudioProps) => {
     const audioContainerRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            console.warn('⚠️ Proximity Audio requires a Secure Origin (HTTPS/Localhost). Audio disabled.');
+            return;
+        }
+
         // Request microphone access
         navigator.mediaDevices.getUserMedia({ audio: true, video: false })
             .then((currentStream) => {
