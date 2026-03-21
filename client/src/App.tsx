@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { io, Socket } from 'socket.io-client';
-import { useAuth0 } from '@auth0/auth0-react';
+import { useAuth } from './hooks/useAuth';
 import Game from './components/Game';
 import Chat from './components/Chat';
 import Auth from './components/Auth';
@@ -9,19 +9,19 @@ import ProximityAudio from './components/ProximityAudio';
 import './styles/index.css';
 
 function App() {
-  const { isAuthenticated: auth0IsAuthenticated, user: auth0User, isLoading: auth0IsLoading } = useAuth0();
+  const { isAuthenticated: authIsAuthenticated, user: authUser, isLoading: authIsLoading } = useAuth();
   const urlParams = new URLSearchParams(window.location.search);
-  const isGuestMode = urlParams.get('guest') === 'true';
+  const isGuestMode = urlParams.get('guest') === 'true' || (window.location.protocol !== 'https:' && window.location.hostname !== 'localhost');
 
   const guestUserId = urlParams.get('userId') || '1';
-  const isAuthenticated = auth0IsAuthenticated || isGuestMode;
+  const isAuthenticated = authIsAuthenticated || isGuestMode;
   const user = isGuestMode ? {
     sub: `guest-explorer-${guestUserId}`,
     name: `Guest Explorer ${guestUserId}`,
     picture: 'https://cdn-icons-png.flaticon.com/512/1144/1144760.png',
     email: `guest-${guestUserId}@example.com`
-  } : auth0User;
-  const isLoading = auth0IsLoading;
+  } : authUser;
+  const isLoading = authIsLoading;
 
   const [currUser, setCurrUser] = useState<any>(null);
   const [socket, setSocket] = useState<Socket | null>(null);
@@ -30,16 +30,15 @@ function App() {
   useEffect(() => {
     if (!isAuthenticated || !user) return;
 
-    // Use a local user state initially from Auth0 or Guest
     setCurrUser({
       sub: user.sub,
       name: user.name,
-      picture: user.picture,
-      email: user.email,
+      picture: user.picture || 'https://cdn-icons-png.flaticon.com/512/1144/1144760.png',
+      email: (user as any).email || `guest-${guestUserId}@example.com`,
       customization: { skinColor: '#ffdbac', hairColor: '#4b2c20', hairStyle: 'default', outfitColor: '#646cff', outfitId: 'basic' }
     });
 
-    const socketUrl = import.meta.env.VITE_API_URL || (import.meta.env.PROD ? '/' : 'http://localhost:3001');
+    const socketUrl = import.meta.env.VITE_API_URL || (import.meta.env.PROD ? '/' : 'http://localhost:707');
     const newSocket = io(socketUrl, {
       transports: ['websocket', 'polling'],
       withCredentials: true,
@@ -49,7 +48,6 @@ function App() {
     });
     setSocket(newSocket);
 
-    // Sync local user view with DB data immediately on joining
     const updateLocalUser = (pData: any) => {
       if (pData.userId === user.sub) {
         setCurrUser((prev: any) => ({
