@@ -15,12 +15,15 @@ export class Character extends Phaser.GameObjects.Container {
     private hair: Phaser.GameObjects.Sprite;
     private nameText: Phaser.GameObjects.Text;
     private currentGender: 'male' | 'female' = 'male';
+    private textureKey: string = 'charBase';
 
     constructor(scene: Phaser.Scene, x: number, y: number, name: string, customization: Customization) {
         super(scene, x, y);
+        this.textureKey = customization.gender === 'female' ? 'charBase_female' : 'charBase';
+        if ((customization as any).textureKey) this.textureKey = (customization as any).textureKey;
 
         // 1. Base Body Layer
-        this.bodySprite = scene.add.sprite(0, -10, 'charBase', 0); // Shifted UP slightly for chair alignment
+        this.bodySprite = scene.add.sprite(0, -10, this.textureKey, 0); // Shifted UP slightly for chair alignment
         this.bodySprite.setTint(0xffffff);
         this.bodySprite.setDisplaySize(54, 54); // Made a bit smaller for better scale
         this.bodySprite.setBlendMode(Phaser.BlendModes.NORMAL);
@@ -56,10 +59,11 @@ export class Character extends Phaser.GameObjects.Container {
 
     public playAnimation(key: string) {
         if (!key) return;
-        const animKey = this.currentGender === 'female' ? `female_${key}` : key;
-        this.bodySprite.play(animKey, true);
-        // this.clothing.play(`outfit_${key}`, true);
-        // this.hair.play(`hair_${key}`, true);
+        const isFemale = this.currentGender === 'female';
+        const prefix = isFemale ? 'female_' : '';
+        const animPrefix = prefix + (this.textureKey.startsWith('char_') ? `${this.textureKey}_` : '');
+
+        this.bodySprite.play(`${animPrefix}walk_${key}`, true);
     }
 
     public stopAnimation() {
@@ -69,15 +73,30 @@ export class Character extends Phaser.GameObjects.Container {
     }
 
     public updateCustomization(customization: Customization) {
+        let textureChanged = false;
+        if ((customization as any).textureKey && (customization as any).textureKey !== this.textureKey) {
+            this.textureKey = (customization as any).textureKey;
+            this.bodySprite.setTexture(this.textureKey);
+            textureChanged = true;
+        }
+
         if (customization.gender && customization.gender !== this.currentGender) {
             this.currentGender = customization.gender;
-            const texKey = customization.gender === 'female' ? 'charBase_female' : 'charBase';
-            this.bodySprite.setTexture(texKey);
-            
-            // Re-trigger animation to switch anim prefix (female_ etc)
+            if (!textureChanged) {
+                const texKey = customization.gender === 'female' ? 'charBase_female' : 'charBase';
+                if (texKey !== this.textureKey) {
+                    this.textureKey = texKey;
+                    this.bodySprite.setTexture(texKey);
+                    textureChanged = true;
+                }
+            }
+        }
+
+        if (textureChanged) {
+            // Re-trigger animation to switch anim prefix
             if (this.bodySprite.anims.isPlaying) {
                 const currentKey = this.bodySprite.anims.currentAnim?.key || '';
-                const baseKey = currentKey.replace('female_', '');
+                const baseKey = currentKey.split('_walk_').pop() || 'down';
                 this.playAnimation(baseKey);
             }
         }

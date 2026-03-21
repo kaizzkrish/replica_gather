@@ -32,6 +32,12 @@ export default class GameScene extends Phaser.Scene {
             frameWidth: 160, frameHeight: 160
         });
 
+        // Load Variant Sprite Sheets
+        this.load.spritesheet('char_m_suit', '/char_m_suit.png', { frameWidth: 160, frameHeight: 160 });
+        this.load.spritesheet('char_m_casual', '/char_m_casual.png', { frameWidth: 160, frameHeight: 160 });
+        this.load.spritesheet('char_f_dress', '/char_f_dress.png', { frameWidth: 160, frameHeight: 160 });
+        this.load.spritesheet('char_f_casual', '/char_f_casual.png', { frameWidth: 160, frameHeight: 160 });
+
         // Load Clothing
         this.load.spritesheet('charOutfit', '/transparent.png', {
             frameWidth: 160, frameHeight: 160
@@ -141,14 +147,18 @@ export default class GameScene extends Phaser.Scene {
             this.homeName = data.name.toUpperCase();
             this.updateRoomUI(this.currentRoomName || '🏠 Home');
         });
-        const baseTextures = ['charBase', 'charBase_female'];
+        const baseTextures = ['charBase', 'charBase_female', 'char_m_suit', 'char_m_casual', 'char_f_dress', 'char_f_casual'];
         const directions = ['down', 'left', 'right', 'up'];
 
         baseTextures.forEach(tex => {
-            const prefix = tex === 'charBase' ? '' : 'female_';
+            const isFemale = tex.includes('_f_') || tex === 'charBase_female';
+            const prefix = isFemale ? 'female_' : '';
+            // If it's a specific outfit, use its name as the prefix to avoid conflicts
+            const animPrefix = prefix + (tex.startsWith('char_') ? `${tex}_` : '');
+
             directions.forEach((dir, index) => {
                 this.anims.create({
-                    key: `${prefix}walk_${dir}`,
+                    key: `${animPrefix}walk_${dir}`,
                     frames: this.anims.generateFrameNumbers(tex, { start: index * 4, end: index * 4 + 3 }),
                     frameRate: 10,
                     repeat: -1
