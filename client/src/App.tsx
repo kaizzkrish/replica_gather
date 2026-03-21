@@ -5,6 +5,7 @@ import Game from './components/Game';
 import Chat from './components/Chat';
 import Auth from './components/Auth';
 import Profile from './components/Profile';
+import { SOCKET_URL } from './config/env';
 import './styles/index.css';
 
 function App() {
@@ -40,17 +41,9 @@ function App() {
       customization: { skinColor: '#ffdbac', hairColor: '#4b2c20', hairStyle: 'default', outfitColor: '#646cff', outfitId: 'basic' }
     });
 
-    let socketUrl = import.meta.env.VITE_API_URL || (import.meta.env.PROD ? '/' : 'http://localhost:707');
-    
-    // 🔥 Force IP detection as priority for AWS/IP based deployment
-    const isIP = /^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$/.test(window.location.hostname);
-    if (isIP || window.location.hostname !== 'localhost') {
-      socketUrl = `http://${window.location.hostname}:707`;
-    }
+    console.log('📡 Game attempting to connect to:', SOCKET_URL);
 
-    console.log('📡 Game attempting to connect to:', socketUrl);
-
-    const newSocket = io(socketUrl, {
+    const newSocket = io(SOCKET_URL, {
       transports: ['websocket', 'polling'],
       withCredentials: true,
       reconnectionAttempts: 5,

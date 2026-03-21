@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { API_BASE } from '../config/env';
 
 const Auth: React.FC = () => {
     const [isLogin, setIsLogin] = useState(true);
@@ -17,13 +18,7 @@ const Auth: React.FC = () => {
         const payload = isLogin ? { username, password } : { username, password, name };
 
         try {
-            let apiBase = import.meta.env.VITE_API_URL || '';
-            const isIP = /^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$/.test(window.location.hostname);
-            if (isIP || window.location.hostname !== 'localhost') {
-                apiBase = `http://${window.location.hostname}:707`;
-                console.log('📡 Auth dynamic IP detection:', apiBase);
-            }
-
+            const apiBase = API_BASE;
             const res = await fetch(`${apiBase}${endpoint}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
