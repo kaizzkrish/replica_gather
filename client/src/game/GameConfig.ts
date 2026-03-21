@@ -2,9 +2,14 @@ import Phaser from 'phaser';
 
 
 export const config: Phaser.Types.Core.GameConfig = {
-    type: Phaser.CANVAS,
-    width: 800,
-    height: 600,
+    type: Phaser.AUTO,
+    width: '100%',
+    height: '100%',
+    scale: {
+        mode: Phaser.Scale.RESIZE,
+        autoCenter: Phaser.Scale.CENTER_BOTH,
+        parent: 'game-container'
+    },
     physics: {
         default: 'arcade',
         arcade: {

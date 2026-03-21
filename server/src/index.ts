@@ -82,6 +82,7 @@ io.on('connection', (socket) => {
     console.log('A user connected:', socket.id);
 
     socket.on('joinRoom', async (data: { room: string, name: string, picture?: string, userId: string, email?: string }) => {
+        console.log(`User ${data?.userId} version ${data?.name} joining room ${data?.room}`);
         if (!data || !data.userId) return;
         const { room, name, picture, userId, email } = data;
         socket.join(room);
@@ -228,6 +229,8 @@ io.on('connection', (socket) => {
     socket.on('playerMovement', async (movementData: { x: number, y: number, animationKey?: string }) => {
         if (!movementData) return;
         const player = activePlayers[socket.id];
+        // Only log movements occasionally to avoid flooding
+        // console.log(`Player moved: ${player?.name} at [${movementData.x}, ${movementData.y}]`);
         if (player) {
             player.x = movementData.x;
             player.y = movementData.y;
@@ -237,6 +240,7 @@ io.on('connection', (socket) => {
 
     socket.on('updateProfile', async (data: { name: string, picture: string, customization?: any }) => {
         const player = activePlayers[socket.id];
+        console.log(`Updating profile for ${player?.name}:`, data);
         if (player) {
             player.name = data.name;
             player.picture = data.picture;
@@ -274,6 +278,7 @@ io.on('connection', (socket) => {
 
     socket.on('chatMessage', async (data: any) => {
         const player = activePlayers[socket.id];
+        console.log(`Chat from ${player?.name}:`, data);
         if (player) {
             const isObject = typeof data === 'object' && data !== null;
             const message = isObject ? data.message : data;

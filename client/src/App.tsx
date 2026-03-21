@@ -9,7 +9,20 @@ import ProximityAudio from './components/ProximityAudio';
 import './styles/index.css';
 
 function App() {
-  const { isAuthenticated, user, isLoading } = useAuth0();
+  const { isAuthenticated: auth0IsAuthenticated, user: auth0User, isLoading: auth0IsLoading } = useAuth0();
+  const urlParams = new URLSearchParams(window.location.search);
+  const isGuestMode = urlParams.get('guest') === 'true';
+
+  const guestUserId = urlParams.get('userId') || '1';
+  const isAuthenticated = auth0IsAuthenticated || isGuestMode;
+  const user = isGuestMode ? {
+    sub: `guest-explorer-${guestUserId}`,
+    name: `Guest Explorer ${guestUserId}`,
+    picture: 'https://cdn-icons-png.flaticon.com/512/1144/1144760.png',
+    email: `guest-${guestUserId}@example.com`
+  } : auth0User;
+  const isLoading = auth0IsLoading;
+
   const [currUser, setCurrUser] = useState<any>(null);
   const [socket, setSocket] = useState<Socket | null>(null);
   const [showProfile, setShowProfile] = useState(false);
@@ -17,7 +30,7 @@ function App() {
   useEffect(() => {
     if (!isAuthenticated || !user) return;
 
-    // Use a local user state initially from Auth0
+    // Use a local user state initially from Auth0 or Guest
     setCurrUser({
       sub: user.sub,
       name: user.name,
@@ -55,8 +68,14 @@ function App() {
     newSocket.on('profileSync', updateLocalUser);
     newSocket.on('profileUpdated', updateLocalUser);
 
+    const handleOpenYouTube = () => {
+      window.open('https://www.youtube.com', '_blank');
+    };
+    window.addEventListener('open-youtube' as any, handleOpenYouTube);
+
     return () => {
       newSocket.disconnect();
+      window.removeEventListener('open-youtube' as any, handleOpenYouTube);
     };
   }, [isAuthenticated, user]);
 
@@ -70,47 +89,49 @@ function App() {
         <Auth />
       ) : (
         <>
-          <div className="user-header">
-            {currUser?.picture ? (
-              <img
-                src={currUser.picture}
-                alt=""
-                className="user-avatar-small"
-                style={{ objectFit: 'cover' }}
-                onClick={() => setShowProfile(true)}
-                onError={(e) => {
-                  (e.target as HTMLImageElement).style.display = 'none';
-                  const parent = (e.target as HTMLImageElement).parentElement;
-                  if (parent) {
-                    const placeholder = document.createElement('div');
-                    placeholder.className = 'user-avatar-small-placeholder';
-                    placeholder.innerText = (currUser?.name || '?')[0];
-                    placeholder.onclick = () => setShowProfile(true);
-                    parent.appendChild(placeholder);
-                  }
-                }}
-              />
-            ) : (
-              <div
-                className="user-avatar-small-placeholder"
-                onClick={() => setShowProfile(true)}
-              >
-                {(currUser?.name || user?.name || '?')[0]}
-              </div>
-            )}
-            <span onClick={() => setShowProfile(true)}>
-              Welcome, <strong>{currUser?.name || user?.name}</strong>!
-            </span>
-          </div>
           {showProfile && <Profile socket={socket} currUser={currUser} onClose={() => setShowProfile(false)} />}
-          <h1>Our princess Home</h1>
-          <div className="main-layout">
-            <Game socket={socket} user={currUser || user} />
+          <Game socket={socket} user={currUser || user} />
+
+          <div className="ui-overlay">
+            <div className="user-header">
+              {currUser?.picture ? (
+                <img
+                  src={currUser.picture}
+                  alt=""
+                  className="user-avatar-small"
+                  style={{ objectFit: 'cover' }}
+                  onClick={() => setShowProfile(true)}
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).style.display = 'none';
+                    const parent = (e.target as HTMLImageElement).parentElement;
+                    if (parent) {
+                      const placeholder = document.createElement('div');
+                      placeholder.className = 'user-avatar-small-placeholder';
+                      placeholder.innerText = (currUser?.name || '?')[0];
+                      placeholder.onclick = () => setShowProfile(true);
+                      parent.appendChild(placeholder);
+                    }
+                  }}
+                />
+              ) : (
+                <div
+                  className="user-avatar-small-placeholder"
+                  onClick={() => setShowProfile(true)}
+                >
+                  {(currUser?.name || user?.name || '?')[0]}
+                </div>
+              )}
+              <span onClick={() => setShowProfile(true)}>
+                Welcome, <strong>{currUser?.name || user?.name}</strong>!
+              </span>
+            </div>
+
+            <div className="app-title-card">
+               <h1>Our Princess Home</h1>
+            </div>
+
             <Chat socket={socket} user={currUser || user} />
             <ProximityAudio socket={socket} />
-          </div>
-          <div className="instructions">
-            <p>Use arrow keys to move and type in chat.</p>
           </div>
         </>
       )}

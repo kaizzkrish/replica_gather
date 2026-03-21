@@ -21,11 +21,11 @@ services:
       context: ./server
     restart: always
     environment:
-      - DATABASE_URL=postgres://postgres:postgres@db:5432/replica_gather
-      - PORT=3001
-      - CORS_ORIGINS=http://localhost:8080
+      - DATABASE_URL=${DATABASE_URL:-postgres://postgres:postgres@db:5432/replica_gather}
+      - PORT=${SERVER_PORT:-3001}
+      - CORS_ORIGINS=${CORS_ORIGINS:-http://localhost:8080}
     ports:
-      - "3001:3001"
+      - "${SERVER_PORT:-3001}:${SERVER_PORT:-3001}"
     depends_on:
       db:
         condition: service_healthy
@@ -33,9 +33,11 @@ services:
   client:
     build:
       context: ./client
+      args:
+        - VITE_API_URL=${VITE_API_URL:-http://localhost:3001}
     restart: always
     ports:
-      - "8080:80"
+      - "${CLIENT_PORT:-8080}:80"
     depends_on:
       - server
 

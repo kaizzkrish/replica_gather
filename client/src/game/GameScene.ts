@@ -123,11 +123,18 @@ export default class GameScene extends Phaser.Scene {
         
         // Input for E key (Now Global & Persistent)
         this.input.keyboard?.on('keydown-E', () => {
-            if (this.interactHint?.alpha === 1) {
+            if (this.interactHint?.alpha === 1 && this.currentRoomName !== '🛋️ Executive Lounge') {
                 const newName = prompt("Enter Home Name (Saves to DB):", this.homeName);
                 if (newName) {
                     this.socket?.emit('updateHomeName', { name: newName.toUpperCase() });
                 }
+            }
+        });
+
+        // Input for ENTER key (YouTube in Lounge)
+        this.input.keyboard?.on('keydown-ENTER', () => {
+            if (this.currentRoomName === '🛋️ Executive Lounge') {
+                window.dispatchEvent(new CustomEvent('open-youtube'));
             }
         });
 
@@ -244,12 +251,15 @@ export default class GameScene extends Phaser.Scene {
                 }
             }
 
-            // 3. Hub Proximity
+            // 3. Hub Proximity Interaction
             if (this.homeBoard && this.interactHint) {
                 const distToBoard = Phaser.Math.Distance.Between(this.player.x, this.player.y, this.homeBoard.x, this.homeBoard.y);
+
                 if (distToBoard < 80) {
                     this.interactHint.setAlpha(1);
                     this.interactHint.y = this.homeBoard.y - 50; 
+                    this.interactHint.x = this.homeBoard.x;
+                    (this.interactHint.list[1] as Phaser.GameObjects.Text).setText('[E] CUSTOMIZE NAME');
                 } else {
                     this.interactHint.setAlpha(0);
                 }
