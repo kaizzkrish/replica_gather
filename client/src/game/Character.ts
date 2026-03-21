@@ -1,12 +1,12 @@
 import Phaser from 'phaser';
 
 export interface Customization {
-    skinColor: string;
-    hairColor: string;
-    hairStyle: string;
-    outfitColor: string;
-    outfitId: string;
-    gender: 'male' | 'female';
+    skinColor?: string;
+    hairColor?: string;
+    hairStyle?: string;
+    outfitColor?: string;
+    outfitId?: string;
+    gender?: 'male' | 'female';
 }
 
 export class Character extends Phaser.GameObjects.Container {
@@ -15,94 +15,91 @@ export class Character extends Phaser.GameObjects.Container {
     private hair: Phaser.GameObjects.Sprite;
     private nameText: Phaser.GameObjects.Text;
     private currentGender: 'male' | 'female' = 'male';
-    private textureKey: string = 'charBase';
+    private outfitKey: string = '';
 
     constructor(scene: Phaser.Scene, x: number, y: number, name: string, customization: Customization) {
         super(scene, x, y);
-        this.textureKey = customization.gender === 'female' ? 'charBase_female' : 'charBase';
-        if ((customization as any).textureKey) this.textureKey = (customization as any).textureKey;
+        this.currentGender = customization.gender === 'female' ? 'female' : 'male';
+        const bodyTag = this.currentGender === 'female' ? 'charBase_female' : 'charBase';
+        this.outfitKey = (customization as any).outfitKey || '';
 
-        // 1. Base Body Layer
-        this.bodySprite = scene.add.sprite(0, -10, this.textureKey, 0); // Shifted UP slightly for chair alignment
+        // 1. Base Body (The actual motion)
+        this.bodySprite = scene.add.sprite(0, -10, bodyTag, 0); 
         this.bodySprite.setTint(0xffffff);
-        this.bodySprite.setDisplaySize(54, 54); // Made a bit smaller for better scale
-        this.bodySprite.setBlendMode(Phaser.BlendModes.NORMAL);
+        this.bodySprite.setDisplaySize(54, 54); 
         this.bodySprite.setDepth(1);
 
-        // 2. Clothing Layer (Shift with body)
-        this.clothing = scene.add.sprite(0, -10, 'charOutfit', 0);
-        this.clothing.setAlpha(0);
+        // 2. Clothing Overlay (The stylish part)
+        this.clothing = scene.add.sprite(0, -10, this.outfitKey || 'charOutfit', 0);
+        this.clothing.setDisplaySize(54, 54);
+        this.clothing.setAlpha(this.outfitKey ? 1 : 0);
         this.clothing.setDepth(2);
 
-        // 3. Hair Layer (Shift with body)
+        // 3. Hair Layer
         this.hair = scene.add.sprite(0, -10, 'charHair', 0);
         this.hair.setAlpha(0);
         this.hair.setDepth(3);
 
         // 4. Name Label
         this.nameText = scene.add.text(0, -48, name, {
-            fontSize: '11px', // Slightly smaller text for better scale
+            fontSize: '14px',
+            backgroundColor: 'rgba(0,0,0,0.6)',
+            padding: { x: 6, y: 3 },
             color: '#ffffff',
-            backgroundColor: '#000000aa',
-            padding: { x: 5, y: 1 }
-        }).setOrigin(0.5, 0.5);
-        this.nameText.setDepth(4);
+            align: 'center',
+            fontFamily: 'Outfit, sans-serif'
+        }).setOrigin(0.5).setDepth(10);
 
-        // Add all to container
         this.add([this.bodySprite, this.clothing, this.hair, this.nameText]);
-
-        // Apply initial customization
-        this.updateCustomization(customization);
-
         scene.add.existing(this);
+        
+        // Initial anim
+        this.playAnimation('down');
+        this.stopAnimation();
     }
 
     public playAnimation(key: string) {
         if (!key) return;
-        const isFemale = this.currentGender === 'female';
-        const prefix = isFemale ? 'female_' : '';
-        const animPrefix = prefix + (this.textureKey.startsWith('char_') ? `${this.textureKey}_` : '');
-
-        this.bodySprite.play(`${animPrefix}walk_${key}`, true);
+        const prefix = this.currentGender === 'female' ? 'female_' : '';
+        this.bodySprite.play(`${prefix}walk_${key}`, true);
+        
+        if (this.outfitKey) {
+            this.clothing.play(`${this.outfitKey}_walk_${key}`, true);
+        }
     }
 
     public stopAnimation() {
-        this.bodySprite.stop();
-        // this.clothing.stop();
-        // this.hair.stop();
+        this.bodySprite.anims.stop();
+        if (this.outfitKey) this.clothing.anims.stop();
     }
 
     public updateCustomization(customization: Customization) {
-        let textureChanged = false;
-        if ((customization as any).textureKey && (customization as any).textureKey !== this.textureKey) {
-            this.textureKey = (customization as any).textureKey;
-            this.bodySprite.setTexture(this.textureKey);
-            textureChanged = true;
+        let redraw = false;
+        
+        if ((customization as any).outfitKey !== undefined && (customization as any).outfitKey !== this.outfitKey) {
+            this.outfitKey = (customization as any).outfitKey;
+            this.clothing.setTexture(this.outfitKey || 'charOutfit');
+            this.clothing.setAlpha(this.outfitKey ? 1 : 0);
+            redraw = true;
         }
 
         if (customization.gender && customization.gender !== this.currentGender) {
             this.currentGender = customization.gender;
-            if (!textureChanged) {
-                const texKey = customization.gender === 'female' ? 'charBase_female' : 'charBase';
-                if (texKey !== this.textureKey) {
-                    this.textureKey = texKey;
-                    this.bodySprite.setTexture(texKey);
-                    textureChanged = true;
-                }
-            }
+            const texKey = customization.gender === 'female' ? 'charBase_female' : 'charBase';
+            this.bodySprite.setTexture(texKey);
+            redraw = true;
         }
 
-        if (textureChanged) {
-            // Re-trigger animation to switch anim prefix
+        if (redraw) {
             if (this.bodySprite.anims.isPlaying) {
                 const currentKey = this.bodySprite.anims.currentAnim?.key || '';
                 const baseKey = currentKey.split('_walk_').pop() || 'down';
                 this.playAnimation(baseKey);
             }
         }
+        
         if (customization.skinColor) this.bodySprite.setTint(Phaser.Display.Color.HexStringToColor(customization.skinColor).color);
         if (customization.outfitColor) this.clothing.setTint(Phaser.Display.Color.HexStringToColor(customization.outfitColor).color);
-        if (customization.hairColor) this.hair.setTint(Phaser.Display.Color.HexStringToColor(customization.hairColor).color);
     }
 
     public updateName(name: string) {
@@ -110,6 +107,8 @@ export class Character extends Phaser.GameObjects.Container {
     }
 
     public syncAlpha(alpha: number) {
-        this.setAlpha(alpha);
+        this.bodySprite.setAlpha(alpha);
+        this.clothing.setAlpha(this.outfitKey ? alpha : 0);
+        this.hair.setAlpha(0);
     }
 }

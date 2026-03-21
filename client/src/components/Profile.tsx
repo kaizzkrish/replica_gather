@@ -44,7 +44,7 @@ const Profile: React.FC<ProfileProps> = ({ socket, currUser, onClose }) => {
             skinColor: defaultStyle.skinColor,
             hairColor: defaultStyle.hairColor,
             outfitColor: defaultStyle.outfitColor,
-            textureKey: defaultStyle.textureKey
+            outfitKey: defaultStyle.outfitKey
         }));
     };
 
@@ -54,7 +54,7 @@ const Profile: React.FC<ProfileProps> = ({ socket, currUser, onClose }) => {
             skinColor: style.skinColor,
             hairColor: style.hairColor,
             outfitColor: style.outfitColor,
-            textureKey: style.textureKey
+            outfitKey: style.outfitKey
         }));
     };
 

@@ -32,11 +32,11 @@ export default class GameScene extends Phaser.Scene {
             frameWidth: 160, frameHeight: 160
         });
 
-        // Load Variant Sprite Sheets
-        this.load.spritesheet('char_m_suit', '/char_m_suit.png', { frameWidth: 160, frameHeight: 160 });
-        this.load.spritesheet('char_m_casual', '/char_m_casual.png', { frameWidth: 160, frameHeight: 160 });
-        this.load.spritesheet('char_f_dress', '/char_f_dress.png', { frameWidth: 160, frameHeight: 160 });
-        this.load.spritesheet('char_f_casual', '/char_f_casual.png', { frameWidth: 160, frameHeight: 160 });
+        // Load Outfit Overlays
+        this.load.spritesheet('outfit_suit', '/outfit_suit.png', { frameWidth: 160, frameHeight: 160 });
+        this.load.spritesheet('outfit_hoodie', '/outfit_hoodie.png', { frameWidth: 160, frameHeight: 160 });
+        this.load.spritesheet('outfit_dress', '/outfit_dress.png', { frameWidth: 160, frameHeight: 160 });
+        this.load.spritesheet('outfit_jacket', '/outfit_jacket.png', { frameWidth: 160, frameHeight: 160 });
 
         // Load Clothing
         this.load.spritesheet('charOutfit', '/transparent.png', {
@@ -147,14 +147,14 @@ export default class GameScene extends Phaser.Scene {
             this.homeName = data.name.toUpperCase();
             this.updateRoomUI(this.currentRoomName || '🏠 Home');
         });
-        const baseTextures = ['charBase', 'charBase_female', 'char_m_suit', 'char_m_casual', 'char_f_dress', 'char_f_casual'];
+        const baseTextures = ['charBase', 'charBase_female', 'outfit_suit', 'outfit_hoodie', 'outfit_dress', 'outfit_jacket'];
         const directions = ['down', 'left', 'right', 'up'];
 
         baseTextures.forEach(tex => {
-            const isFemale = tex.includes('_f_') || tex === 'charBase_female';
+            const isFemale = tex.includes('_f_') || tex === 'charBase_female' || tex.includes('dress') || tex.includes('jacket');
             const prefix = isFemale ? 'female_' : '';
-            // If it's a specific outfit, use its name as the prefix to avoid conflicts
-            const animPrefix = prefix + (tex.startsWith('char_') ? `${tex}_` : '');
+            // For outfits, we want a specific prefix
+            const animPrefix = tex.startsWith('outfit_') ? `${tex}_` : prefix;
 
             directions.forEach((dir, index) => {
                 this.anims.create({
