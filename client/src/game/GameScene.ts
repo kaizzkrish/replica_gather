@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { Socket } from 'socket.io-client';
-import { Character, type Customization } from './Character';
+import { Character } from './Character';
 
 export default class GameScene extends Phaser.Scene {
     private player?: Character;
@@ -53,7 +53,6 @@ export default class GameScene extends Phaser.Scene {
 
     private roomLabel?: Phaser.GameObjects.Text;
     private roomBar?: Phaser.GameObjects.Graphics;
-    private roomGraphics?: Phaser.GameObjects.Graphics;
     private currentRoomName: string = '';
 
     private rooms = [
@@ -110,7 +109,6 @@ export default class GameScene extends Phaser.Scene {
         this.interactHint.add([hintBg, hintText]);
 
         // UI Setup: Top Bar
-        this.roomGraphics = this.add.graphics().setDepth(1);
         this.roomBar = this.add.graphics().setScrollFactor(0).setDepth(1000);
         this.roomLabel = this.add.text(400, 22, this.homeName, {
             fontSize: '13px',
