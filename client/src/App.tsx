@@ -40,19 +40,19 @@ function App() {
 
     let socketUrl = import.meta.env.VITE_API_URL || (import.meta.env.PROD ? '/' : 'http://localhost:707');
     
-    // 🔥 Fix for IP-based deployment: If browser is on an IP, but socket says localhost, swap it!
+    // 🔥 Force IP detection as priority for AWS/IP based deployment
     const isIP = /^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$/.test(window.location.hostname);
-    if (isIP && (socketUrl.includes('localhost') || socketUrl.startsWith('/'))) {
+    if (isIP || window.location.hostname !== 'localhost') {
       socketUrl = `http://${window.location.hostname}:707`;
-      console.log('📡 Dynamic IP Detection - Connecting to:', socketUrl);
     }
+
+    console.log('📡 Game attempting to connect to:', socketUrl);
 
     const newSocket = io(socketUrl, {
       transports: ['websocket', 'polling'],
       withCredentials: true,
-      extraHeaders: {
-        "ngrok-skip-browser-warning": "true"
-      }
+      reconnectionAttempts: 5,
+      timeout: 10000
     });
     setSocket(newSocket);
 

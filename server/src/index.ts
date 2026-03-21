@@ -19,15 +19,7 @@ const origins = [
 ];
 
 app.use(cors({ 
-    origin: (origin, callback) => {
-        // Allow requests with no origin (like mobile apps or curl)
-        if (!origin) return callback(null, true);
-        if (origins.indexOf(origin) !== -1 || origin.startsWith('http://localhost') || origin.includes('ngrok')) {
-            callback(null, true);
-        } else {
-            callback(new Error('Not allowed by CORS'));
-        }
-    },
+    origin: true,
     credentials: true,
     allowedHeaders: ['ngrok-skip-browser-warning', 'Content-Type', 'Authorization']
 }));
