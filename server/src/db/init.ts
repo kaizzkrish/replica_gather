@@ -4,6 +4,8 @@ export const initDb = async () => {
     const queries = [
         `CREATE TABLE IF NOT EXISTS replica_users (
             id VARCHAR(255) PRIMARY KEY,
+            username VARCHAR(255) UNIQUE,
+            password VARCHAR(255),
             name VARCHAR(255),
             email VARCHAR(255),
             picture TEXT,
@@ -34,7 +36,9 @@ export const initDb = async () => {
             id VARCHAR(50) PRIMARY KEY DEFAULT 'main-space',
             home_name VARCHAR(255) DEFAULT 'SRIKRISHNAN''S LUXURY HOME'
         );`,
-        `INSERT INTO replica_space_settings (id, home_name) VALUES ('main-space', 'SRIKRISHNAN''S LUXURY HOME') ON CONFLICT DO NOTHING;`
+        `INSERT INTO replica_space_settings (id, home_name) VALUES ('main-space', 'SRIKRISHNAN''S LUXURY HOME') ON CONFLICT DO NOTHING;`,
+        `ALTER TABLE replica_users ADD COLUMN IF NOT EXISTS username VARCHAR(255) UNIQUE;`,
+        `ALTER TABLE replica_users ADD COLUMN IF NOT EXISTS password VARCHAR(255);`,
     ];
 
     try {

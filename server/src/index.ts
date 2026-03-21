@@ -10,12 +10,11 @@ dotenv.config();
 
 // Version: 1.0.1 - Universal Standard
 
+import bcrypt from 'bcryptjs';
+
 const app = express();
 const origins = [
-    "http://localhost:5173",
-    "http://127.0.0.1:5173",
-    "http://localhost:8080",
-    "https://colla-bio.netlify.app"
+    "*", // Allow all for now on the IP deployment
 ];
 
 app.use(cors({ 
@@ -24,6 +23,52 @@ app.use(cors({
     allowedHeaders: ['ngrok-skip-browser-warning', 'Content-Type', 'Authorization']
 }));
 app.use(express.json());
+
+// --- Simple Auth Routes ---
+
+app.post('/api/auth/signup', async (req, res) => {
+    const { username, password, name } = req.body;
+    if (!username || !password) return res.status(400).json({ error: 'Username and password required' });
+
+    try {
+        const check = await pool.query('SELECT id FROM replica_users WHERE username = $1', [username]);
+        if (check.rows.length > 0) return res.status(400).json({ error: 'Username already taken' });
+
+        const hashedPassword = await bcrypt.hash(password, 10);
+        const userId = `local-${Date.now()}`;
+        
+        await pool.query(
+            'INSERT INTO replica_users (id, username, password, name) VALUES ($1, $2, $3, $4)',
+            [userId, username, hashedPassword, name || username]
+        );
+
+        res.json({ id: userId, username, name: name || username });
+    } catch (err: any) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.post('/api/auth/login', async (req, res) => {
+    const { username, password } = req.body;
+    try {
+        const result = await pool.query('SELECT * FROM replica_users WHERE username = $1', [username]);
+        if (result.rows.length === 0) return res.status(401).json({ error: 'Invalid credentials' });
+
+        const user = result.rows[0];
+        const match = await bcrypt.compare(password, user.password);
+        if (!match) return res.status(401).json({ error: 'Invalid credentials' });
+
+        res.json({
+            id: user.id,
+            username: user.username,
+            name: user.name,
+            picture: user.picture,
+            customization: user.customization
+        });
+    } catch (err: any) {
+        res.status(500).json({ error: err.message });
+    }
+});
 
 app.get('/', (req, res) => {
     res.send('Replica Gather Server is running!');

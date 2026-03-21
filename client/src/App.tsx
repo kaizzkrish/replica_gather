@@ -5,22 +5,25 @@ import Game from './components/Game';
 import Chat from './components/Chat';
 import Auth from './components/Auth';
 import Profile from './components/Profile';
-import ProximityAudio from './components/ProximityAudio';
 import './styles/index.css';
 
 function App() {
-  const { isAuthenticated: authIsAuthenticated, user: authUser, isLoading: authIsLoading } = useAuth();
+  const { isAuthenticated: authIsAuthenticated, user: authUser, isLoading: authIsLoading, logout } = useAuth();
   const urlParams = new URLSearchParams(window.location.search);
-  const isGuestMode = urlParams.get('guest') === 'true' || (window.location.protocol !== 'https:' && window.location.hostname !== 'localhost');
+  const isGuestMode_Url = urlParams.get('guest') === 'true';
 
   const guestUserId = urlParams.get('userId') || '1';
-  const isAuthenticated = authIsAuthenticated || isGuestMode;
-  const user = isGuestMode ? {
+  const isAuthenticated = authIsAuthenticated || isGuestMode_Url;
+  
+  // Choose user source: Auth hook (local login) or guest fallback
+  const user = authIsAuthenticated ? authUser : (isGuestMode_Url ? {
     sub: `guest-explorer-${guestUserId}`,
     name: `Guest Explorer ${guestUserId}`,
     picture: 'https://cdn-icons-png.flaticon.com/512/1144/1144760.png',
     email: `guest-${guestUserId}@example.com`
-  } : authUser;
+  } : null);
+
+  const isGuestMode = !authIsAuthenticated && isGuestMode_Url;
   const isLoading = authIsLoading;
 
   const [currUser, setCurrUser] = useState<any>(null);
@@ -130,6 +133,20 @@ function App() {
               <span onClick={() => setShowProfile(true)}>
                 Welcome, <strong>{currUser?.name || user?.name}</strong>!
               </span>
+              <button 
+                onClick={() => logout()}
+                style={{ 
+                  background: 'rgba(255, 0, 0, 0.2)', 
+                  color: 'white', 
+                  border: 'none', 
+                  borderRadius: '12px', 
+                  padding: '4px 10px', 
+                  cursor: 'pointer',
+                  fontSize: '0.75rem' 
+                }}
+              >
+                LOGOUT
+              </button>
             </div>
 
             <div className="app-title-card">
@@ -137,7 +154,6 @@ function App() {
             </div>
 
             <Chat socket={socket} user={currUser || user} />
-            <ProximityAudio socket={socket} />
           </div>
         </>
       )}
