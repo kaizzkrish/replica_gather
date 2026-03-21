@@ -69,10 +69,17 @@ export class Character extends Phaser.GameObjects.Container {
     }
 
     public updateCustomization(customization: Customization) {
-        if (customization.gender) {
+        if (customization.gender && customization.gender !== this.currentGender) {
             this.currentGender = customization.gender;
             const texKey = customization.gender === 'female' ? 'charBase_female' : 'charBase';
             this.bodySprite.setTexture(texKey);
+            
+            // Re-trigger animation to switch anim prefix (female_ etc)
+            if (this.bodySprite.anims.isPlaying) {
+                const currentKey = this.bodySprite.anims.currentAnim?.key || '';
+                const baseKey = currentKey.replace('female_', '');
+                this.playAnimation(baseKey);
+            }
         }
         if (customization.skinColor) this.bodySprite.setTint(Phaser.Display.Color.HexStringToColor(customization.skinColor).color);
         if (customization.outfitColor) this.clothing.setTint(Phaser.Display.Color.HexStringToColor(customization.outfitColor).color);

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { useAuth0 } from '@auth0/auth0-react';
 import { Socket } from 'socket.io-client';
+import { useAuth } from '../hooks/useAuth';
 
 interface ProfileProps {
     socket: Socket | null;
@@ -9,7 +9,7 @@ interface ProfileProps {
 }
 
 const Profile: React.FC<ProfileProps> = ({ socket, currUser, onClose }) => {
-    const { logout } = useAuth0();
+    const { logout } = useAuth();
     const [isEditing, setIsEditing] = useState(false);
     const [editedName, setEditedName] = useState(currUser?.name || '');
     const [editedPicture, setEditedPicture] = useState(currUser?.picture || '');
@@ -55,120 +55,119 @@ const Profile: React.FC<ProfileProps> = ({ socket, currUser, onClose }) => {
         }
     };
 
+    const handleRemovePicture = () => {
+        setEditedPicture(''); // Reset to default placeholder
+    };
+
     return (
         <div className="profile-overlay" onClick={onClose}>
-            <div className="profile-card" onClick={(e) => e.stopPropagation()}>
+            <div className="profile-card premium-card" onClick={(e) => e.stopPropagation()}>
                 <div className="profile-header">
-                    <button className="close-btn" onClick={onClose} style={{ padding: '0px' }}>×</button>
-                    <h2>Edit Your Identity</h2>
+                    <button className="close-btn" onClick={onClose}>×</button>
+                    <h2>Profile Settings</h2>
                 </div>
 
                 <div className="profile-content">
-                    <div className="profile-avatar-section">
-                        <img
-                            src={editedPicture || 'https://via.placeholder.com/150'}
-                            alt={currUser.name}
-                            className="profile-picture"
-                            onError={(e) => {
-                                (e.target as HTMLImageElement).src = 'https://via.placeholder.com/150';
-                            }}
-                        />
-                        {isEditing && (
-                            <label className="avatar-edit-overlay clickable">
-                                <span>Change Photo</span>
-                                <input
-                                    type="file"
-                                    accept="image/*"
-                                    onChange={handleFileChange}
-                                    style={{ display: 'none' }}
-                                />
-                            </label>
-                        )}
-                    </div>
-
-                    <div className="profile-info">
-                        <div className="info-group">
-                            <label>Display Name</label>
-                            {isEditing ? (
-                                <input
-                                    type="text"
-                                    value={editedName}
-                                    onChange={(e) => setEditedName(e.target.value)}
-                                    className="edit-input"
-                                />
-                            ) : (
-                                <div className="info-value">{editedName}</div>
+                    <div className="profile-top-row">
+                        <div className="sidebar-avatar">
+                            <img
+                                src={editedPicture || 'https://cdn-icons-png.flaticon.com/512/1144/1144760.png'}
+                                alt=""
+                                className="profile-avatar-large"
+                            />
+                            {isEditing && (
+                                <div className="avatar-actions-v2">
+                                    <label className="action-label upload-btn">
+                                        Change
+                                        <input type="file" accept="image/*" onChange={handleFileChange} style={{ display: 'none' }} />
+                                    </label>
+                                    {editedPicture && (
+                                        <button className="remove-photo-btn" onClick={handleRemovePicture}>Remove</button>
+                                    )}
+                                </div>
                             )}
                         </div>
 
-                        <div className="customization-section">
-                            <h3>Avatar Design</h3>
-                            <div className="customization-grid">
-                                <div className="color-item">
-                                    <label>Skin Tone</label>
-                                    <input
-                                        type="color"
-                                        value={customization.skinColor}
+                        <div className="main-info">
+                            <div className="input-group">
+                                <label>Your Name</label>
+                                <input
+                                    type="text"
+                                    value={editedName}
+                                    disabled={!isEditing}
+                                    onChange={(e) => setEditedName(e.target.value)}
+                                    placeholder="Enter your name"
+                                    className="premium-input"
+                                />
+                            </div>
+
+                            <div className="input-group">
+                                <label>Character Type</label>
+                                <div className="gender-toggle-buttons">
+                                    <button 
+                                        className={`gender-btn ${customization.gender === 'male' ? 'active' : ''}`}
                                         disabled={!isEditing}
-                                        onChange={(e) => handleColorChange('skinColor', e.target.value)}
-                                    />
-                                </div>
-                                <div className="color-item">
-                                    <label>Hair Color</label>
-                                    <input
-                                        type="color"
-                                        value={customization.hairColor}
-                                        disabled={!isEditing}
-                                        onChange={(e) => handleColorChange('hairColor', e.target.value)}
-                                    />
-                                </div>
-                                <div className="color-item">
-                                    <label>Outfit Color</label>
-                                    <input
-                                        type="color"
-                                        value={customization.outfitColor}
-                                        disabled={!isEditing}
-                                        onChange={(e) => handleColorChange('outfitColor', e.target.value)}
-                                    />
-                                </div>
-                                <div className="color-item">
-                                    <label>Character Type</label>
-                                    <select
-                                        value={customization.gender}
-                                        disabled={!isEditing}
-                                        onChange={(e) => handleColorChange('gender', e.target.value)}
-                                        className="gender-select"
+                                        onClick={() => handleColorChange('gender', 'male')}
                                     >
-                                        <option value="male">Male</option>
-                                        <option value="female">Female</option>
-                                    </select>
+                                        👦 Male
+                                    </button>
+                                    <button 
+                                        className={`gender-btn ${customization.gender === 'female' ? 'active' : ''}`}
+                                        disabled={!isEditing}
+                                        onClick={() => handleColorChange('gender', 'female')}
+                                    >
+                                        👧 Female
+                                    </button>
                                 </div>
                             </div>
                         </div>
+                    </div>
 
-                        <div className="info-group">
-                            <label>Email Address</label>
-                            <div className="info-value email-readonly">{currUser.email}</div>
+                    <div className="customization-group">
+                        <h3>Vibe & Style</h3>
+                        <div className="mini-grid">
+                            <div className="vibe-item">
+                                <label>Skin</label>
+                                <input
+                                    type="color"
+                                    value={customization.skinColor}
+                                    disabled={!isEditing}
+                                    onChange={(e) => handleColorChange('skinColor', e.target.value)}
+                                />
+                            </div>
+                            <div className="vibe-item">
+                                <label>Hair</label>
+                                <input
+                                    type="color"
+                                    value={customization.hairColor}
+                                    disabled={!isEditing}
+                                    onChange={(e) => handleColorChange('hairColor', e.target.value)}
+                                />
+                            </div>
+                            <div className="vibe-item">
+                                <label>Suit</label>
+                                <input
+                                    type="color"
+                                    value={customization.outfitColor}
+                                    disabled={!isEditing}
+                                    onChange={(e) => handleColorChange('outfitColor', e.target.value)}
+                                />
+                            </div>
                         </div>
                     </div>
                 </div>
 
-                <div className="profile-actions">
+                <div className="profile-footer-v2">
                     {isEditing ? (
-                        <div className="edit-actions">
-                            <button onClick={handleSave} className="save-btn">Save Avatar</button>
-                            <button onClick={() => setIsEditing(false)} className="cancel-btn">Cancel</button>
+                        <div className="auth-btn-row">
+                            <button onClick={handleSave} className="save-btn-p">Save Changes</button>
+                            <button onClick={() => setIsEditing(false)} className="cancel-btn-p">Discard</button>
                         </div>
                     ) : (
-                        <button onClick={() => setIsEditing(true)} className="edit-profile-btn">Customize Look</button>
+                        <button onClick={() => setIsEditing(true)} className="edit-p-btn">Edit Profile</button>
                     )}
-
-                    <button
-                        onClick={() => logout({ logoutParams: { returnTo: window.location.origin } })}
-                        className="profile-logout-btn"
-                    >
-                        Sign Out
-                    </button>
+                    
+                    <button onClick={() => logout()} className="p-signout-btn">Sign Out</button>
                 </div>
             </div>
         </div>

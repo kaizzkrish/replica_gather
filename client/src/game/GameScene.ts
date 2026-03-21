@@ -179,6 +179,15 @@ export default class GameScene extends Phaser.Scene {
             if (char) { char.destroy(); this.otherPlayers.delete(id); }
         });
 
+        this.socket.on('profileUpdated', (p: any) => {
+            if (!p) return;
+            const targetChar = p.id === this.socket?.id ? this.player : this.otherPlayers.get(p.id);
+            if (targetChar) {
+                targetChar.updateName(p.name);
+                if (p.customization) targetChar.updateCustomization(p.customization);
+            }
+        });
+
         const joinRoom = () => {
             this.socket?.emit('joinRoom', {
                 room: 'main-space',
