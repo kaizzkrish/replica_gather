@@ -1,78 +1,50 @@
-# Production Deployment Guide for ourlittlespace.in
+# Production Deployment Guide: Internal Nginx Mode
 
-This guide explains how to set up your application on AWS with Nginx and SSL.
+This guide explains how to deploy using the Nginx configuration stored **inside your project code**.
 
-## 1. AWS EC2 Instance Setup
-1.  **Launch Instance**: Use **Ubuntu 22.04 LTS**.
-2.  **Security Group**: Open the following ports:
-    *   `SSH` (22) - your IP
-    *   `HTTP` (80) - 0.0.0.0/0
-    *   `HTTPS` (443) - 0.0.0.0/0
-3.  **Elastic IP**: Allocate and associate an Elastic IP with your instance to prevent the IP from changing.
+## 1. How it works
+- **Docker Nginx**: Manage your client/server routing within the code (`deploy/nginx/default.conf`).
+- **Host Nginx**: The existing Nginx on your AWS server will receive traffic on port 80/443 and forward it to this project's Docker container on port **8080**.
 
-## 2. Domain DNS Configuration
-- In your domain provider (e.g., Namecheap, GoDaddy):
-    - Create an **A Record** for `ourlittlespace.in` pointing to your EC2 Elastic IP.
-    - Create an **A Record** for `www.ourlittlespace.in` pointing to your EC2 Elastic IP.
-
-## 3. Server Preparation
-Connect to your EC2 via SSH and run:
+## 2. Updated Project Stack
+Run this in your project root to start everything:
 ```bash
-# Update system
-sudo apt update && sudo apt upgrade -y
-
-# Install Docker
-curl -fsSL https://get.docker.com -o get-docker.sh
-sudo sh get-docker.sh
-sudo usermod -aG docker $USER
-# Logout and log back in for changes to take effect
-
-# Clone your repository
-git clone <your-repo-url>
-cd replica_gather
-```
-
-## 4. Initial SSL Certificate Generation
-Before starting the full stack, you need to generate the SSL certificates. There is a "chicken-and-egg" problem: Nginx won't start without certificates, but you need Nginx (or another server) to get them.
-
-**Option A: The Standalone Method (Easiest)**
-*Ensure port 80 is not being used by any process (like a local Nginx).*
-```bash
-docker run -it --rm --name certbot \
-  -p 80:80 \
-  -v "$(pwd)/deploy/certbot/conf:/etc/letsencrypt" \
-  -v "$(pwd)/deploy/certbot/www:/var/www/certbot" \
-  certbot/certbot certonly --standalone \
-  -d ourlittlespace.in -d www.ourlittlespace.in \
-  --email your-email@example.com --agree-tos --no-eff-email
-```
-
-**Option B: The Webroot Method**
-If you have Nginx already running:
-```bash
-docker run -it --rm --name certbot \
-  -v "$(pwd)/deploy/certbot/conf:/etc/letsencrypt" \
-  -v "$(pwd)/deploy/certbot/www:/var/www/certbot" \
-  certbot/certbot certonly --webroot -w /var/www/certbot \
-  -d ourlittlespace.in -d www.ourlittlespace.in \
-  --email your-email@example.com --agree-tos --no-eff-email
-```
-
-## 5. Launch Application
-Once certificates are successfully generated in `deploy/certbot/conf/live/ourlittlespace.in/`, launch the production stack:
-```bash
-# Build and start all services (db, server, client, nginx, certbot)
+cd ~/gather_replica/replica_gather/
 docker compose -f docker-compose.prod.yml up -d --build
 ```
+This will start your project's Nginx on **localhost:8080**.
 
-## 6. Automatic Renewal
-The `docker-compose.prod.yml` includes a `certbot` container that checks for renewal every 12 hours.
-To manually test renewal:
-```bash
-docker compose -f docker-compose.prod.yml exec certbot certbot renew --dry-run
+## 3. Host Nginx "Bridge" Config
+Update your host's Nginx at `/etc/nginx/sites-available/ourlittlespace.in` to point to the Docker Nginx:
+
+```nginx
+server {
+    listen 80;
+    server_name ourlittlespace.in www.ourlittlespace.in;
+
+    location / {
+        proxy_pass http://localhost:8080; # Point to our Project's Docker Nginx
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+
+        # WebSocket support for Socket.io
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+    }
+}
 ```
 
-## Troubleshooting
-- **Logs**: Check Nginx logs with `docker compose logs nginx`.
-- **Ports**: Ensure nothing else is listening on port 80/443 on the host.
-- **Firewall**: Check `ufw status` on Ubuntu.
+## 4. Enable and add SSL (Host Level)
+```bash
+sudo ln -s /etc/nginx/sites-available/ourlittlespace.in /etc/nginx/sites-enabled/
+sudo nginx -t && sudo systemctl reload nginx
+
+# Run Certbot to add SSL securely
+sudo certbot --nginx -d ourlittlespace.in -d www.ourlittlespace.in
+```
+
+## 5. Summary
+This method keeps your project's main logic (routing between frontend and backend) inside your code repository while letting the host server handle the SSL and port 80/443 mapping.
