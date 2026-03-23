@@ -13,12 +13,10 @@ dotenv.config();
 import bcrypt from 'bcryptjs';
 
 const app = express();
-const origins = [
-    "*", // Allow all for now on the IP deployment
-];
+const corsOrigins = process.env.CORS_ORIGINS ? process.env.CORS_ORIGINS.split(',') : '*';
 
 app.use(cors({ 
-    origin: true,
+    origin: corsOrigins,
     credentials: true,
     allowedHeaders: ['ngrok-skip-browser-warning', 'Content-Type', 'Authorization']
 }));
@@ -77,7 +75,7 @@ app.get('/', (req, res) => {
 const server = http.createServer(app);
 const io = new Server(server, {
     cors: {
-        origin: "*", // More permissive for dev
+        origin: corsOrigins,
         methods: ["GET", "POST"],
         credentials: true
     }
