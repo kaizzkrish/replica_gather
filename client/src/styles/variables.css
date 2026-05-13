@@ -1,15 +1,19 @@
 :root {
-    --primary-color: #795548;
-    --primary-hover: #5d4037;
-    --bg-dark: #f5f5dc;
-    --card-bg: #fff8e1;
-    --text-main: #3e2723;
-    --text-muted: #8d6e63;
-    --error-color: #d32f2f;
-    --success-color: #388e3c;
-    --border-radius: 12px;
+    --primary-color: #A78BBE;
+    --primary-hover: #8b6ba8;
+    --accent-color: #ffd180;
+    --bg-dark: #F3E7F1;
+    --card-bg: #ffffff;
+    --text-main: #4a345e;
+    --text-muted: #8b79a1;
+    --error-color: #ef4444;
+    --success-color: #10b981;
+    --border-radius: 16px;
+    --glass-bg: rgba(255, 255, 255, 0.7);
+    --glass-border: rgba(255, 255, 255, 0.3);
+    --shadow-premium: 0 20px 40px rgba(167, 139, 190, 0.15);
 
-    /* Brown/Beige theme for chat */
+    /* Brown/Beige theme for chat fallback */
     --wa-bg: #fdf5e6;
     --wa-header: #dcb07a;
     --wa-green: #795548;
