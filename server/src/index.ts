@@ -25,22 +25,22 @@ app.use(express.json());
 // --- Simple Auth Routes ---
 
 app.post('/api/auth/signup', async (req, res) => {
-    const { username, password, name } = req.body;
-    if (!username || !password) return res.status(400).json({ error: 'Username and password required' });
+    const { username, password, name, email } = req.body;
+    if (!username || !password || !email) return res.status(400).json({ error: 'Username, password and email required' });
 
     try {
-        const check = await pool.query('SELECT id FROM replica_users WHERE username = $1', [username]);
-        if (check.rows.length > 0) return res.status(400).json({ error: 'Username already taken' });
+        const check = await pool.query('SELECT id FROM replica_users WHERE username = $1 OR email = $2', [username, email]);
+        if (check.rows.length > 0) return res.status(400).json({ error: 'Username or Email already taken' });
 
         const hashedPassword = await bcrypt.hash(password, 10);
         const userId = `local-${Date.now()}`;
         
         await pool.query(
-            'INSERT INTO replica_users (id, username, password, name) VALUES ($1, $2, $3, $4)',
-            [userId, username, hashedPassword, name || username]
+            'INSERT INTO replica_users (id, username, password, name, email) VALUES ($1, $2, $3, $4, $5)',
+            [userId, username, hashedPassword, name || username, email]
         );
 
-        res.json({ id: userId, username, name: name || username });
+        res.json({ id: userId, username, name: name || username, email });
     } catch (err: any) {
         res.status(500).json({ error: err.message });
     }
@@ -63,6 +63,57 @@ app.post('/api/auth/login', async (req, res) => {
             picture: user.picture,
             customization: user.customization
         });
+    } catch (err: any) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.post('/api/auth/forgot-password', async (req, res) => {
+    const { email } = req.body;
+    if (!email) return res.status(400).json({ error: 'Email is required' });
+
+    try {
+        const result = await pool.query('SELECT * FROM replica_users WHERE email = $1', [email]);
+        if (result.rows.length === 0) return res.status(404).json({ error: 'No user found with this email' });
+
+        const resetCode = Math.floor(100000 + Math.random() * 900000).toString();
+        const expires = new Date(Date.now() + 3600000); // 1 hour
+
+        await pool.query(
+            'UPDATE replica_users SET reset_code = $1, reset_expires = $2 WHERE email = $3',
+            [resetCode, expires, email]
+        );
+
+        // MOCK EMAIL SENDING - Replace with Nodemailer logic
+        console.log(`--- [PASSWORD RESET CODE FOR ${email}] ---`);
+        console.log(`CODE: ${resetCode}`);
+        console.log(`------------------------------------------`);
+
+        res.json({ message: 'Reset code sent to your email (Check server console for demo)' });
+    } catch (err: any) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.post('/api/auth/reset-password', async (req, res) => {
+    const { email, code, newPassword } = req.body;
+    if (!email || !code || !newPassword) return res.status(400).json({ error: 'All fields are required' });
+
+    try {
+        const result = await pool.query(
+            'SELECT * FROM replica_users WHERE email = $1 AND reset_code = $2 AND reset_expires > NOW()',
+            [email, code]
+        );
+
+        if (result.rows.length === 0) return res.status(400).json({ error: 'Invalid or expired reset code' });
+
+        const hashedPassword = await bcrypt.hash(newPassword, 10);
+        await pool.query(
+            'UPDATE replica_users SET password = $1, reset_code = NULL, reset_expires = NULL WHERE email = $2',
+            [hashedPassword, email]
+        );
+
+        res.json({ message: 'Password reset successfully' });
     } catch (err: any) {
         res.status(500).json({ error: err.message });
     }
