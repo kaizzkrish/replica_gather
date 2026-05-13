@@ -165,7 +165,7 @@
 }
 
 .auth-form-card {
-    height: 33vw;
+    min-height: 70vh;
     width: 100%;
     max-width: 500px;
     background: rgba(255, 255, 255, 0.4);
@@ -237,7 +237,9 @@
 }
 
 .form-group.floating input:focus + label,
-.form-group.floating input:not(:placeholder-shown) + label {
+.form-group.floating input:not(:placeholder-shown) + label,
+.form-group.floating input:autofill + label,
+.form-group.floating input:-webkit-autofill + label {
     top: 0;
     font-size: 0.8rem;
     font-weight: 700;
@@ -245,6 +247,13 @@
     background-color: white;
     transform: translateY(-50%) scale(0.9);
     border-radius: 4px;
+}
+
+/* Reset Flow Spacing */
+.reset-flow-container {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
 }
 
 /* Password Toggle */
@@ -281,6 +290,24 @@
 .password-toggle:hover {
     background-color: rgba(167, 139, 190, 0.1);
     color: var(--primary-color);
+}
+
+.forgot-password-link {
+    align-self: flex-end;
+    background: none;
+    border: none;
+    color: var(--primary-color);
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    margin-top: -10px;
+    padding: 0;
+    transition: color 0.2s ease;
+}
+
+.forgot-password-link:hover {
+    color: var(--primary-hover);
+    text-decoration: underline;
 }
 
 /* Submit Button */

@@ -5,7 +5,13 @@ import brandHeroImg from '../assets/images/login-screen-placeholder.png';
 
 const Auth: React.FC = () => {
     const [isLogin, setIsLogin] = useState(true);
+    const [isForgotPassword, setIsForgotPassword] = useState(false);
     const [username, setUsername] = useState('');
+    const [email, setEmail] = useState('');
+    const [resetEmail, setResetEmail] = useState('');
+    const [resetStep, setResetStep] = useState<'request' | 'verify'>('request');
+    const [resetCode, setResetCode] = useState('');
+    const [newPassword, setNewPassword] = useState('');
     const [password, setPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
     const [name, setName] = useState('');
@@ -17,8 +23,18 @@ const Auth: React.FC = () => {
         setError('');
         setLoading(true);
 
-        const endpoint = isLogin ? '/api/auth/login' : '/api/auth/signup';
-        const payload = isLogin ? { username, password } : { username, password, name };
+        let endpoint = isLogin ? '/api/auth/login' : '/api/auth/signup';
+        let payload: any = isLogin ? { username, password } : { username, password, name, email };
+
+        if (isForgotPassword) {
+            if (resetStep === 'request') {
+                endpoint = '/api/auth/forgot-password';
+                payload = { email: resetEmail };
+            } else {
+                endpoint = '/api/auth/reset-password';
+                payload = { email: resetEmail, code: resetCode, newPassword };
+            }
+        }
 
         try {
             const apiBase = API_BASE;
@@ -29,11 +45,23 @@ const Auth: React.FC = () => {
             });
 
             const data = await res.json();
-            if (!res.ok) throw new Error(data.error || 'Auth failed');
+            if (!res.ok) throw new Error(data.error || 'Request failed');
 
-            // Success: Save user to local storage and refresh
-            localStorage.setItem('replica_user', JSON.stringify(data));
-            window.location.reload();
+            if (isForgotPassword) {
+                if (resetStep === 'request') {
+                    setResetStep('verify');
+                    alert('Check the server console for your 6-digit reset code!');
+                } else {
+                    alert('Password reset successful! Please log in.');
+                    setIsForgotPassword(false);
+                    setIsLogin(true);
+                    setResetStep('request');
+                }
+            } else {
+                // Success: Save user to local storage and refresh
+                localStorage.setItem('replica_user', JSON.stringify(data));
+                window.location.reload();
+            }
         } catch (err: any) {
             setError(err.message);
         } finally {
@@ -86,78 +114,171 @@ const Auth: React.FC = () => {
             <div className="auth-form-side">
                 <div className="auth-form-card">
                     <div className="auth-header">
-                        <h2>{isLogin ? 'Welcome Back' : 'Create Account'}</h2>
-                        <p>{isLogin ? 'Enter your details to continue' : 'Join our growing community today'}</p>
+                        <h2>
+                            {isForgotPassword ? 'Reset Password' : (isLogin ? 'Welcome Back' : 'Create Account')}
+                        </h2>
+                        <p>
+                            {isForgotPassword 
+                                ? 'Enter your email to receive a reset code' 
+                                : (isLogin ? 'Enter your details to continue' : 'Join our growing community today')}
+                        </p>
                     </div>
 
                     <form className="auth-form" onSubmit={handleSubmit}>
                         {error && <div className="auth-error">{error}</div>}
                         
-                        {!isLogin && (
-                            <div className="form-group floating">
-                                <input 
-                                    type="text" 
-                                    value={name} 
-                                    onChange={(e) => setName(e.target.value)} 
-                                    placeholder=" "
-                                    id="fullname"
-                                    required 
-                                />
-                                <label htmlFor="fullname">Full Name</label>
-                            </div>
-                        )}
-
-                        <div className="form-group floating">
-                            <input 
-                                type="text" 
-                                value={username} 
-                                onChange={(e) => setUsername(e.target.value)} 
-                                placeholder=" "
-                                id="username"
-                                required 
-                            />
-                            <label htmlFor="username">Username</label>
-                        </div>
-
-                        <div className="form-group floating password-group">
-                            <input 
-                                type={showPassword ? "text" : "password"} 
-                                value={password} 
-                                onChange={(e) => setPassword(e.target.value)} 
-                                placeholder=" "
-                                id="password"
-                                required 
-                            />
-                            <label htmlFor="password">Password</label>
-                            <button 
-                                type="button" 
-                                className="password-toggle" 
-                                onClick={() => setShowPassword(!showPassword)}
-                                aria-label={showPassword ? "Hide password" : "Show password"}
-                            >
-                                {showPassword ? (
-                                    <i className="ph ph-eye"></i>
+                        {isForgotPassword ? (
+                            <div className="reset-flow-container">
+                                {resetStep === 'request' ? (
+                                    <div className="form-group floating">
+                                        <input 
+                                            type="email" 
+                                            value={resetEmail} 
+                                            onChange={(e) => setResetEmail(e.target.value)} 
+                                            placeholder=" "
+                                            id="resetEmail"
+                                            required 
+                                        />
+                                        <label htmlFor="resetEmail">Email Address</label>
+                                    </div>
                                 ) : (
-                                    <i className="ph ph-eye-slash"></i>
+                                    <>
+                                        <div className="form-group floating">
+                                            <input 
+                                                type="text" 
+                                                value={resetCode} 
+                                                onChange={(e) => setResetCode(e.target.value)} 
+                                                placeholder=" "
+                                                id="resetCode"
+                                                maxLength={6}
+                                                required 
+                                            />
+                                            <label htmlFor="resetCode">6-Digit Code</label>
+                                        </div>
+                                        <div className="form-group floating password-group">
+                                            <input 
+                                                type={showPassword ? "text" : "password"} 
+                                                value={newPassword} 
+                                                onChange={(e) => setNewPassword(e.target.value)} 
+                                                placeholder=" "
+                                                id="newPassword"
+                                                required 
+                                            />
+                                            <label htmlFor="newPassword">New Password</label>
+                                            <button 
+                                                type="button" 
+                                                className="password-toggle" 
+                                                onClick={() => setShowPassword(!showPassword)}
+                                            >
+                                                {showPassword ? <i className="ph ph-eye"></i> : <i className="ph ph-eye-slash"></i>}
+                                            </button>
+                                        </div>
+                                    </>
                                 )}
-                            </button>
-                        </div>
+                            </div>
+                        ) : (
+                            <>
+                                {!isLogin && (
+                                    <>
+                                        <div className="form-group floating">
+                                            <input 
+                                                type="text" 
+                                                value={name} 
+                                                onChange={(e) => setName(e.target.value)} 
+                                                placeholder=" "
+                                                id="fullname"
+                                                required 
+                                            />
+                                            <label htmlFor="fullname">Full Name</label>
+                                        </div>
+                                        <div className="form-group floating">
+                                            <input 
+                                                type="email" 
+                                                value={email} 
+                                                onChange={(e) => setEmail(e.target.value)} 
+                                                placeholder=" "
+                                                id="email"
+                                                required 
+                                            />
+                                            <label htmlFor="email">Email Address</label>
+                                        </div>
+                                    </>
+                                )}
+
+                                <div className="form-group floating">
+                                    <input 
+                                        type="text" 
+                                        value={username} 
+                                        onChange={(e) => setUsername(e.target.value)} 
+                                        placeholder=" "
+                                        id="username"
+                                        required 
+                                    />
+                                    <label htmlFor="username">Username</label>
+                                </div>
+
+                                <div className="form-group floating password-group">
+                                    <input 
+                                        type={showPassword ? "text" : "password"} 
+                                        value={password} 
+                                        onChange={(e) => setPassword(e.target.value)} 
+                                        placeholder=" "
+                                        id="password"
+                                        required 
+                                    />
+                                    <label htmlFor="password">Password</label>
+                                    <button 
+                                        type="button" 
+                                        className="password-toggle" 
+                                        onClick={() => setShowPassword(!showPassword)}
+                                        aria-label={showPassword ? "Hide password" : "Show password"}
+                                    >
+                                        {showPassword ? (
+                                            <i className="ph ph-eye"></i>
+                                        ) : (
+                                            <i className="ph ph-eye-slash"></i>
+                                        )}
+                                    </button>
+                                </div>
+                                {isLogin && (
+                                    <button 
+                                        type="button" 
+                                        className="forgot-password-link"
+                                        onClick={() => setIsForgotPassword(true)}
+                                    >
+                                        Forgot Password?
+                                    </button>
+                                )}
+                            </>
+                        )}
 
                         <button type="submit" className="auth-submit-btn" disabled={loading}>
                             {loading ? (
                                 <span className="loader"></span>
                             ) : (
-                                <span>{isLogin ? 'Sign In' : 'Sign Up'}</span>
+                                <span>
+                                    {isForgotPassword 
+                                        ? (resetStep === 'request' ? 'Send Reset Code' : 'Reset Password') 
+                                        : (isLogin ? 'Sign In' : 'Sign Up')}
+                                </span>
                             )}
                         </button>
                     </form>
 
                     <div className="auth-footer">
                         <p>
-                            {isLogin ? "Don't have an account?" : "Already have an account?"}
-                            <button className="auth-toggle-btn" onClick={() => setIsLogin(!isLogin)}>
-                                {isLogin ? 'Sign Up' : 'Sign In'}
-                            </button>
+                            {isForgotPassword ? (
+                                <button className="auth-toggle-btn" onClick={() => setIsForgotPassword(false)}>
+                                    Back to Login
+                                </button>
+                            ) : (
+                                <>
+                                    {isLogin ? "Don't have an account?" : "Already have an account?"}
+                                    <button className="auth-toggle-btn" onClick={() => setIsLogin(!isLogin)}>
+                                        {isLogin ? 'Sign Up' : 'Sign In'}
+                                    </button>
+                                </>
+                            )}
                         </p>
                     </div>
                 </div>
