@@ -7,6 +7,7 @@ const Auth: React.FC = () => {
     const [isLogin, setIsLogin] = useState(true);
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
+    const [showPassword, setShowPassword] = useState(false);
     const [name, setName] = useState('');
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
@@ -118,9 +119,9 @@ const Auth: React.FC = () => {
                             <label htmlFor="username">Username</label>
                         </div>
 
-                        <div className="form-group floating">
+                        <div className="form-group floating password-group">
                             <input 
-                                type="password" 
+                                type={showPassword ? "text" : "password"} 
                                 value={password} 
                                 onChange={(e) => setPassword(e.target.value)} 
                                 placeholder=" "
@@ -128,6 +129,18 @@ const Auth: React.FC = () => {
                                 required 
                             />
                             <label htmlFor="password">Password</label>
+                            <button 
+                                type="button" 
+                                className="password-toggle" 
+                                onClick={() => setShowPassword(!showPassword)}
+                                aria-label={showPassword ? "Hide password" : "Show password"}
+                            >
+                                {showPassword ? (
+                                    <i className="ph ph-eye"></i>
+                                ) : (
+                                    <i className="ph ph-eye-slash"></i>
+                                )}
+                            </button>
                         </div>
 
                         <button type="submit" className="auth-submit-btn" disabled={loading}>

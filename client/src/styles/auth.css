@@ -141,7 +141,7 @@
 }
 
 .brand-tagline span {
-    color: #A88Dc0;
+    color: #a88dc0;
     display: block;
 }
 
@@ -245,6 +245,42 @@
     background-color: white;
     transform: translateY(-50%) scale(0.9);
     border-radius: 4px;
+}
+
+/* Password Toggle */
+.password-group {
+    position: relative;
+}
+
+.password-group input {
+    padding-right: 50px !important;
+}
+
+.password-toggle {
+    position: absolute;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 8px;
+    border-radius: 50%;
+    transition: all 0.2s ease;
+    z-index: 5;
+}
+
+.password-toggle i {
+    font-size: 22px;
+}
+
+.password-toggle:hover {
+    background-color: rgba(167, 139, 190, 0.1);
+    color: var(--primary-color);
 }
 
 /* Submit Button */
