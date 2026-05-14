@@ -34,7 +34,7 @@ const Sidebar: React.FC<SidebarProps> = ({
         </div>
         <button className="sidebar-toggle-btn toggle-btn" onClick={() => setIsExpanded(!isExpanded)} title={isExpanded ? "Minimize" : "Expand"}>
           <div className="item-kitty"></div>
-          <i className={`ph-bold ${isExpanded ? 'ph-caret-left' : 'ph-list'}`}></i>
+          <i className={`ph-bold ${isExpanded ? 'ph-duotone ph-arrow-fat-left' : 'ph-list'}`}></i>
         </button>
       </div>
 
