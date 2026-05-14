@@ -5,8 +5,10 @@ import Game from './components/Game';
 import Chat from './components/Chat';
 import Auth from './components/Auth';
 import Profile from './components/Profile';
+import Sidebar from './components/Sidebar';
 import { SOCKET_URL } from './config/env';
 import './styles/index.css';
+import './styles/sidebar.css';
 
 function App() {
   const { isAuthenticated: authIsAuthenticated, user: authUser, isLoading: authIsLoading, logout } = useAuth();
@@ -29,6 +31,7 @@ function App() {
   const [currUser, setCurrUser] = useState<any>(null);
   const [socket, setSocket] = useState<Socket | null>(null);
   const [showProfile, setShowProfile] = useState(false);
+  const [activeSidebarItem, setActiveSidebarItem] = useState('connect');
 
   useEffect(() => {
     if (!isAuthenticated || !user) return;
@@ -94,56 +97,22 @@ function App() {
           <Game socket={socket} user={currUser || user} />
 
           <div className="ui-overlay">
-            <div className="user-header">
-              {currUser?.picture ? (
-                <img
-                  src={currUser.picture}
-                  alt=""
-                  className="user-avatar-small"
-                  style={{ objectFit: 'cover' }}
-                  onClick={() => setShowProfile(true)}
-                  onError={(e) => {
-                    (e.target as HTMLImageElement).style.display = 'none';
-                    const parent = (e.target as HTMLImageElement).parentElement;
-                    if (parent) {
-                      const placeholder = document.createElement('div');
-                      placeholder.className = 'user-avatar-small-placeholder';
-                      placeholder.innerText = (currUser?.name || '?')[0];
-                      placeholder.onclick = () => setShowProfile(true);
-                      parent.appendChild(placeholder);
-                    }
-                  }}
-                />
-              ) : (
-                <div
-                  className="user-avatar-small-placeholder"
-                  onClick={() => setShowProfile(true)}
-                >
-                  {(currUser?.name || user?.name || '?')[0]}
-                </div>
-              )}
-              <span onClick={() => setShowProfile(true)}>
-                Welcome, <strong>{currUser?.name || user?.name}</strong>!
-              </span>
-              <button 
-                onClick={() => logout()}
-                style={{ 
-                  background: 'rgba(255, 0, 0, 0.2)', 
-                  color: 'white', 
-                  border: 'none', 
-                  borderRadius: '12px', 
-                  padding: '4px 10px', 
-                  cursor: 'pointer',
-                  fontSize: '0.75rem' 
-                }}
-              >
-                LOGOUT
-              </button>
-            </div>
-
-            <div className="app-title-card">
-               <h1>Our Princess Home</h1>
-            </div>
+            <Sidebar 
+              user={currUser || user} 
+              onLogout={logout} 
+              onProfileClick={() => setShowProfile(true)}
+              activeItem={activeSidebarItem}
+              onItemClick={(item) => {
+                setActiveSidebarItem(item);
+                if (item === 'chat') {
+                  // If chat is clicked, we could toggle a global chat event or state
+                  window.dispatchEvent(new CustomEvent('toggle-chat'));
+                }
+                if (item === 'settings') {
+                  setShowProfile(true);
+                }
+              }}
+            />
 
             <Chat socket={socket} user={currUser || user} />
           </div>
