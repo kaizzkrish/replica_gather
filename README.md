@@ -13,7 +13,7 @@ A real-time 2D virtual space built with React, Phaser.js, Socket.io, and Postgre
 - **Frontend**: React, Vite, Phaser 3, Socket.io-client, Auth0.
 - **Backend**: Node.js, Express, Socket.io, PostgreSQL.
 
-## Prerequisites
+## Prerequisites 
 - Node.js (v18+)
 - PostgreSQL (v14+)
 - Auth0 Account
