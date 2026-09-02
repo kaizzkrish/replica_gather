@@ -44,7 +44,6 @@ const Chat: React.FC<ChatProps> = ({ socket, user }) => {
     const [inputValue, setInputValue] = useState('');
     const [players, setPlayers] = useState<Record<string, PlayerStatus>>({});
     const [isExpanded, setIsExpanded] = useState(false);
-    const [unreadTotal, setUnreadTotal] = useState(0);
     const chatEndRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
@@ -149,10 +148,6 @@ const Chat: React.FC<ChatProps> = ({ socket, user }) => {
                 ...prev,
                 [chatKey]: [...(prev[chatKey] || []), msg]
             }));
-
-            if (!isExpanded && msg.senderUserId !== userId) {
-                setUnreadTotal(prev => prev + 1);
-            }
         });
 
         socket.on('profileUpdated', (pData: any) => {
@@ -218,18 +213,11 @@ const Chat: React.FC<ChatProps> = ({ socket, user }) => {
         }
     }, [isExpanded, activeChatId, chatHistory[activeChatId]?.length, socket, userId]);
 
-    // Sync unread total badge
     useEffect(() => {
-        const allUnreadCount = Object.values(chatHistory)
-            .flat()
-            .filter(m => m.senderUserId !== userId && !m.isRead)
-            .length;
-        setUnreadTotal(allUnreadCount);
-
         if (isExpanded) {
             chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
         }
-    }, [chatHistory, isExpanded, userId]);
+    }, [chatHistory, isExpanded]);
 
     const handleSendMessage = (e: React.FormEvent) => {
         e.preventDefault();
@@ -296,21 +284,6 @@ const Chat: React.FC<ChatProps> = ({ socket, user }) => {
 
     return (
         <>
-            <div className="chat-floating-trigger" onClick={() => setIsExpanded(!isExpanded)}>
-                {isExpanded ? (
-                    <svg viewBox="0 0 24 24" width="30" height="30" fill="currentColor">
-                        <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" />
-                    </svg>
-                ) : (
-                    <>
-                        <svg viewBox="0 0 24 24" width="30" height="30" fill="currentColor">
-                            <path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z" />
-                        </svg>
-                        {unreadTotal > 0 && <span className="unread-badge">{unreadTotal}</span>}
-                    </>
-                )}
-            </div>
-
             <div className={`chat-app-container ${isExpanded ? 'expanded' : ''}`}>
                 <div className="sidebar">
                     <div className="sidebar-header">

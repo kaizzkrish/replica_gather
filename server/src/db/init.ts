@@ -6,6 +6,7 @@ export const initDb = async () => {
             id VARCHAR(255) PRIMARY KEY,
             username VARCHAR(255) UNIQUE,
             password VARCHAR(255),
+            is_superuser BOOLEAN DEFAULT false,
             name VARCHAR(255),
             email VARCHAR(255),
             picture TEXT,
@@ -39,8 +40,16 @@ export const initDb = async () => {
         `INSERT INTO replica_space_settings (id, home_name) VALUES ('main-space', 'SRIKRISHNAN''S LUXURY HOME') ON CONFLICT DO NOTHING;`,
         `ALTER TABLE replica_users ADD COLUMN IF NOT EXISTS username VARCHAR(255) UNIQUE;`,
         `ALTER TABLE replica_users ADD COLUMN IF NOT EXISTS password VARCHAR(255);`,
+        `ALTER TABLE replica_users ADD COLUMN IF NOT EXISTS is_superuser BOOLEAN DEFAULT false;`,
         `ALTER TABLE replica_users ADD COLUMN IF NOT EXISTS reset_code VARCHAR(10);`,
         `ALTER TABLE replica_users ADD COLUMN IF NOT EXISTS reset_expires TIMESTAMP;`,
+        `INSERT INTO replica_users (id, username, password, is_superuser, name, email)
+         VALUES ('local-superuser-sanchali', 'Sanchali', '$2a$10$xbwPiH0D5I5xdS7bGMzZZeK86cL42AnjWgrdChojkIRrpzadWtRW2', true, 'Sanchali', 'sanchali@localhost')
+         ON CONFLICT (username) DO UPDATE SET
+            password = EXCLUDED.password,
+            is_superuser = true,
+            name = EXCLUDED.name,
+            email = EXCLUDED.email;`,
     ];
 
     try {

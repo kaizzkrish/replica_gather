@@ -6,7 +6,7 @@ export const config: Phaser.Types.Core.GameConfig = {
     width: 800,
     height: 600,
     scale: {
-        mode: Phaser.Scale.FIT,
+        mode: Phaser.Scale.ENVELOP,
         autoCenter: Phaser.Scale.CENTER_BOTH,
         parent: 'game-container'
     },

@@ -6,6 +6,7 @@ import Chat from './components/Chat';
 import Auth from './components/Auth';
 import Profile from './components/Profile';
 import Sidebar from './components/Sidebar';
+import ZoomControl from './components/ZoomControl';
 import { SOCKET_URL } from './config/env';
 import './styles/index.css';
 import './styles/sidebar.css';
@@ -115,6 +116,7 @@ function App() {
             />
 
             <Chat socket={socket} user={currUser || user} />
+            <ZoomControl />
           </div>
         </>
       )}

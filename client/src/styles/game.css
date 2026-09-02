@@ -1,9 +1,9 @@
 #game-container {
-    border: 4px solid var(--primary-color);
-    border-radius: 8px;
-    box-shadow: 0 4px 15px rgba(121, 85, 72, 0.2);
     overflow: hidden;
-    margin: auto;
+}
+
+#game-container canvas {
+    display: block;
 }
 
 .instructions {
