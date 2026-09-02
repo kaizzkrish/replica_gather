@@ -21,7 +21,7 @@ services:
       context: ./server
     restart: always
     environment:
-      - DATABASE_URL=${DATABASE_URL:-postgres://postgres:postgres@db:5432/replica_gather}
+      - DATABASE_URL=postgres://postgres:postgres@db:5432/replica_gather
       - PORT=707
       - CORS_ORIGINS=${CORS_ORIGINS:-*}
     ports:
