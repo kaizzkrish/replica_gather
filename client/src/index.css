@@ -79,15 +79,25 @@ h1 {
 }
 
 #game-container {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 90vw;
+  max-width: 800px;
+  height: auto;
+  aspect-ratio: 4 / 3;
   border-radius: 32px;
   overflow: hidden;
-  box-shadow: 0 30px 80px rgba(0,0,0,0.25);
+  box-shadow: 0 30px 80px rgba(74, 52, 94, 0.3);
   border: 8px solid white;
-  transition: transform 0.3s ease;
+  transition: all 0.3s ease;
+  z-index: 1;
 }
 
 #game-container:hover {
-  transform: scale(1.005);
+  transform: translate(-50%, -52%) scale(1.01);
+  box-shadow: 0 40px 100px rgba(74, 52, 94, 0.4);
 }
 
 .instructions {

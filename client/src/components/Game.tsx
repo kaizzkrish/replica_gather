@@ -33,7 +33,7 @@ const Game: React.FC<GameProps> = ({ socket, user }) => {
     }, [socket]);
 
     return (
-        <div id="game-container" style={{ width: '100%', height: '100%' }} />
+        <div id="game-container" />
     );
 };
 

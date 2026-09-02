@@ -13,10 +13,20 @@ dotenv.config();
 import bcrypt from 'bcryptjs';
 
 const app = express();
-const corsOrigins = process.env.CORS_ORIGINS ? process.env.CORS_ORIGINS.split(',') : '*';
+const corsOrigins = process.env.CORS_ORIGINS
+    ? process.env.CORS_ORIGINS.split(',').map((origin) => origin.trim())
+    : ['*'];
+const allowCorsOrigin = (origin: string | undefined, callback: (error: Error | null, origin?: boolean | string) => void) => {
+    if (!origin || corsOrigins.includes('*') || corsOrigins.includes(origin)) {
+        callback(null, origin || true);
+        return;
+    }
+
+    callback(new Error('Origin not allowed by CORS'));
+};
 
 app.use(cors({ 
-    origin: corsOrigins,
+    origin: allowCorsOrigin,
     credentials: true,
     allowedHeaders: ['ngrok-skip-browser-warning', 'Content-Type', 'Authorization']
 }));
@@ -61,6 +71,7 @@ app.post('/api/auth/login', async (req, res) => {
             username: user.username,
             name: user.name,
             picture: user.picture,
+            isSuperuser: user.is_superuser,
             customization: user.customization
         });
     } catch (err: any) {
@@ -126,7 +137,7 @@ app.get('/', (req, res) => {
 const server = http.createServer(app);
 const io = new Server(server, {
     cors: {
-        origin: corsOrigins,
+        origin: allowCorsOrigin,
         methods: ["GET", "POST"],
         credentials: true
     }

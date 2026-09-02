@@ -19,6 +19,7 @@
     position: relative;
     display: flex;
     flex-direction: column;
+    background-color: #A78BBE;
 }
 
 .main-layout {
@@ -110,20 +111,24 @@ h1 {
 .app-title-card {
     position: absolute;
     top: 20px;
-    left: 20px;
-    background-color: rgba(255, 255, 255, 0.1);
-    backdrop-filter: blur(5px);
-    padding: 10px 24px;
-    border-radius: 12px;
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(255, 255, 255, 0.4);
+    backdrop-filter: blur(20px);
+    padding: 10px 32px;
+    border-radius: 16px;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    box-shadow: 0 4px 15px rgba(74, 52, 94, 0.1);
+    z-index: 1000;
 }
 
 .app-title-card h1 {
-    font-size: 1.1rem;
+    font-size: 1rem;
+    font-weight: 800;
     margin: 0 !important;
-    color: #fff;
+    color: #4a345e;
     text-transform: uppercase;
-    letter-spacing: 2px;
+    letter-spacing: 3px;
     font-family: 'Inter', sans-serif;
 }
 
