@@ -177,6 +177,11 @@ const Chat: React.FC<ChatProps> = ({ socket, user }) => {
             });
         });
 
+        const handleToggleChat = () => {
+            setIsExpanded(prev => !prev);
+        };
+        window.addEventListener('toggle-chat', handleToggleChat);
+
         socket.emit('requestChatHistory');
 
         return () => {
@@ -188,6 +193,7 @@ const Chat: React.FC<ChatProps> = ({ socket, user }) => {
             socket.off('userStatusChange');
             socket.off('messagesMarkedRead');
             socket.off('profileUpdated');
+            window.removeEventListener('toggle-chat', handleToggleChat);
         };
     }, [socket, userId, isExpanded]);
 
