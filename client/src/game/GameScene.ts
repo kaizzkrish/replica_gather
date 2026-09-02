@@ -8,6 +8,57 @@ export default class GameScene extends Phaser.Scene {
     private socket?: Socket;
     private userData?: any;
     private cursors?: Phaser.Types.Input.Keyboard.CursorKeys;
+    private static readonly MIN_ZOOM = 0.1;
+    private static readonly MAX_ZOOM = 2;
+    private currentZoom = 1;
+
+    private setZoom(zoom: number) {
+        this.currentZoom = Phaser.Math.Clamp(zoom, GameScene.MIN_ZOOM, GameScene.MAX_ZOOM);
+        this.cameras.main.setZoom(this.currentZoom);
+        this.updateCameraBounds();
+        this.updateFollowState();
+        // Keep the on-screen slider in sync with wheel/pinch driven changes
+        window.dispatchEvent(new CustomEvent('game-zoom-sync', { detail: { zoom: this.currentZoom } }));
+    }
+
+    // When zoomed out far enough that the background is smaller than the
+    // viewport, Phaser forces the camera to a single fixed scroll position
+    // (its bounds-clamp has no range left to clamp within) — but that
+    // forced position is derived from raw bounds.x/y, so leaving them at
+    // (0,0) pins the image into the top-left corner instead of centering
+    // it. Shifting the bounds' origin by half the leftover space corrects
+    // for that (verified against Phaser's own Camera.preRender source).
+    private updateCameraBounds() {
+        const { VIEWPORT_WIDTH, VIEWPORT_HEIGHT, BG_WIDTH, BG_HEIGHT } = GameScene;
+        const dw = VIEWPORT_WIDTH / this.currentZoom;
+        const dh = VIEWPORT_HEIGHT / this.currentZoom;
+        const boundsX = dw > BG_WIDTH ? (BG_WIDTH - dw) / 2 : 0;
+        const boundsY = dh > BG_HEIGHT ? (BG_HEIGHT - dh) / 2 : 0;
+        this.cameras.main.setBounds(boundsX, boundsY, BG_WIDTH, BG_HEIGHT);
+    }
+
+    // Once zoomed out far enough that the whole background fits inside the
+    // viewport, there's nothing left to "follow" the player into, and
+    // camera-follow's own per-frame lerp mixes zoomed/unzoomed units in a
+    // way that fights the bounds clamp — so past that point we stop
+    // following and just center the full image directly instead.
+    private updateFollowState() {
+        const { VIEWPORT_WIDTH, VIEWPORT_HEIGHT, BG_WIDTH, BG_HEIGHT } = GameScene;
+        const fitsEntirely = (VIEWPORT_WIDTH / this.currentZoom) >= BG_WIDTH
+            && (VIEWPORT_HEIGHT / this.currentZoom) >= BG_HEIGHT;
+
+        if (fitsEntirely) {
+            this.cameras.main.stopFollow();
+            this.cameras.main.centerOn(BG_WIDTH / 2, BG_HEIGHT / 2);
+        } else if (this.player) {
+            this.cameras.main.startFollow(this.player, true, 0.1, 0.1);
+        }
+    }
+
+    private handleZoomEvent = (e: Event) => {
+        const zoom = (e as CustomEvent<{ zoom: number }>).detail?.zoom;
+        if (typeof zoom === 'number') this.setZoom(zoom);
+    };
 
     constructor() {
         super('GameScene');
@@ -19,7 +70,7 @@ export default class GameScene extends Phaser.Scene {
     }
 
     preload() {
-        this.load.image('home_background', '/home_background.png');
+        this.load.image('home_background', '/home_background_lavender.png');
         this.load.image('furniture_office', '/furniture_office.png');
         this.load.image('furniture_gaming', '/furniture_gaming.png');
         this.load.image('furniture_home', '/furniture_home.png');
@@ -68,12 +119,30 @@ export default class GameScene extends Phaser.Scene {
     private interactHint?: Phaser.GameObjects.Container;
     private homeName: string = "SRIKRISHNAN'S LUXURY HOME";
 
+    // Full background image, shown uncropped, native aspect ratio preserved.
+    // Fixed at a size that fully covers the 800x600 viewport with no gaps
+    // down to about 60% zoom, without stretching the source art too far
+    // past its native resolution (which would look blurry once zoomed
+    // back in). MIN_ZOOM goes lower than that on purpose — past ~60%
+    // zoomed out, the whole image just shrinks into view with empty
+    // canvas space around it rather than being blown up further.
+    private static readonly VIEWPORT_WIDTH = 800;
+    private static readonly VIEWPORT_HEIGHT = 600;
+    private static readonly BG_HEIGHT = 1020;
+    private static readonly BG_WIDTH = Math.ceil(GameScene.BG_HEIGHT * (2752 / 1536));
+
     create() {
         if (!this.socket) return;
 
-        // Background: Exact Gather Style
-        const bg = this.add.image(400, 300, 'home_background').setDepth(-100);
-        bg.setDisplaySize(800, 600);
+        const { BG_WIDTH, BG_HEIGHT } = GameScene;
+
+        // Background: full lavender home image, uncropped
+        const bg = this.add.image(BG_WIDTH / 2, BG_HEIGHT / 2, 'home_background').setDepth(-100);
+        bg.setDisplaySize(BG_WIDTH, BG_HEIGHT);
+
+        // Camera can pan across the full image width; start centered on it
+        this.cameras.main.setBounds(0, 0, BG_WIDTH, BG_HEIGHT);
+        this.cameras.main.centerOn(BG_WIDTH / 2, BG_HEIGHT / 2);
 
         // 🏠 Stylish Home Hub Board (Now in Garden)
         this.homeBoard = this.add.container(150, 150).setDepth(5);
@@ -118,7 +187,100 @@ export default class GameScene extends Phaser.Scene {
         }).setOrigin(0.5).setScrollFactor(0).setDepth(1001);
 
         this.updateRoomUI('🏠 Home', true);
-        
+
+        // 🔍 Zoom Control (range slider, mouse wheel, and trackpad/touch pinch)
+        this.setZoom(1);
+        window.addEventListener('game-zoom', this.handleZoomEvent);
+
+        const canvas = this.sys.game.canvas;
+
+        // Mouse scroll wheel + trackpad two-finger pinch (browsers report pinch
+        // as a wheel event with ctrlKey set, since that's the native pinch-zoom gesture)
+        const wheelHandler = (e: WheelEvent) => {
+            e.preventDefault();
+            const sensitivity = e.ctrlKey ? 0.02 : 0.001;
+            this.setZoom(this.currentZoom - e.deltaY * sensitivity);
+        };
+        canvas.addEventListener('wheel', wheelHandler, { passive: false });
+
+        // 🖐️ Drag-to-pan (mouse or single-finger touch) in all directions —
+        // horizontally the background is wider than the viewport, and
+        // vertically extra room opens up once the player zooms in.
+        let isPanning = false;
+        let panStartX = 0;
+        let panStartY = 0;
+        let panStartScrollX = 0;
+        let panStartScrollY = 0;
+        const beginPan = (clientX: number, clientY: number) => {
+            isPanning = true;
+            panStartX = clientX;
+            panStartY = clientY;
+            panStartScrollX = this.cameras.main.scrollX;
+            panStartScrollY = this.cameras.main.scrollY;
+            // Free-look: release camera-follow so the manual drag isn't
+            // fought by the camera snapping back to the player each frame.
+            // Walking (see update()) re-engages follow automatically.
+            this.cameras.main.stopFollow();
+        };
+        const updatePan = (clientX: number, clientY: number) => {
+            if (!isPanning) return;
+            const zoom = this.cameras.main.zoom;
+            this.cameras.main.scrollX = panStartScrollX - (clientX - panStartX) / zoom;
+            this.cameras.main.scrollY = panStartScrollY - (clientY - panStartY) / zoom;
+        };
+        const endPan = () => { isPanning = false; };
+
+        const mouseDownHandler = (e: MouseEvent) => beginPan(e.clientX, e.clientY);
+        const mouseMoveHandler = (e: MouseEvent) => updatePan(e.clientX, e.clientY);
+        canvas.addEventListener('mousedown', mouseDownHandler);
+        window.addEventListener('mousemove', mouseMoveHandler);
+        window.addEventListener('mouseup', endPan);
+
+        // Two-finger pinch-to-zoom, one-finger drag-to-pan on touchscreens
+        let pinchStartDistance = 0;
+        let pinchStartZoom = 1;
+        const touchDistance = (touches: TouchList) => {
+            const dx = touches[0].clientX - touches[1].clientX;
+            const dy = touches[0].clientY - touches[1].clientY;
+            return Math.hypot(dx, dy);
+        };
+        const touchStartHandler = (e: TouchEvent) => {
+            if (e.touches.length === 1) {
+                beginPan(e.touches[0].clientX, e.touches[0].clientY);
+            } else if (e.touches.length === 2) {
+                isPanning = false;
+                pinchStartDistance = touchDistance(e.touches);
+                pinchStartZoom = this.currentZoom;
+            }
+        };
+        const touchMoveHandler = (e: TouchEvent) => {
+            if (e.touches.length === 1 && isPanning) {
+                e.preventDefault();
+                updatePan(e.touches[0].clientX, e.touches[0].clientY);
+            } else if (e.touches.length === 2 && pinchStartDistance > 0) {
+                e.preventDefault();
+                const scale = touchDistance(e.touches) / pinchStartDistance;
+                this.setZoom(pinchStartZoom * scale);
+            }
+        };
+        const touchEndHandler = () => { isPanning = false; pinchStartDistance = 0; };
+        canvas.addEventListener('touchstart', touchStartHandler, { passive: true });
+        canvas.addEventListener('touchmove', touchMoveHandler, { passive: false });
+        canvas.addEventListener('touchend', touchEndHandler);
+        canvas.addEventListener('touchcancel', touchEndHandler);
+
+        this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+            window.removeEventListener('game-zoom', this.handleZoomEvent);
+            canvas.removeEventListener('wheel', wheelHandler);
+            canvas.removeEventListener('mousedown', mouseDownHandler);
+            window.removeEventListener('mousemove', mouseMoveHandler);
+            window.removeEventListener('mouseup', endPan);
+            canvas.removeEventListener('touchstart', touchStartHandler);
+            canvas.removeEventListener('touchmove', touchMoveHandler);
+            canvas.removeEventListener('touchend', touchEndHandler);
+            canvas.removeEventListener('touchcancel', touchEndHandler);
+        });
+
         // Input for E key (Now Global & Persistent)
         this.input.keyboard?.on('keydown-E', () => {
             if (this.interactHint?.alpha === 1 && this.currentRoomName !== '🛋️ Executive Lounge') {
@@ -231,10 +393,14 @@ export default class GameScene extends Phaser.Scene {
 
                 this.player.x += velocityX * (delta / 1000);
                 this.player.y += velocityY * (delta / 1000);
-                this.player.x = Phaser.Math.Clamp(this.player.x, 20, 780);
-                this.player.y = Phaser.Math.Clamp(this.player.y, 20, 580);
-                
+                this.player.x = Phaser.Math.Clamp(this.player.x, 20, GameScene.BG_WIDTH - 20);
+                this.player.y = Phaser.Math.Clamp(this.player.y, 20, GameScene.BG_HEIGHT - 20);
+
                 this.player.playAnimation(animKey);
+
+                // Walking resumes camera-follow in case a manual drag released
+                // it (unless still zoomed out enough that the whole image fits)
+                this.updateFollowState();
 
                 // Throttle socket updates
                 if (time - this.lastEmitTime > 50) {
@@ -324,6 +490,7 @@ export default class GameScene extends Phaser.Scene {
         const custom = playerInfo.customization || { skinColor: '#ffdbac', hairColor: '#4b2c20', hairStyle: 'default', outfitColor: '#646cff', outfitId: 'basic', gender: 'male' };
         this.player = new Character(this, x, y, playerInfo.name, custom);
         this.player.setDepth(10);
+        this.updateFollowState();
     }
 
     addOtherPlayers(playerInfo: any) {
