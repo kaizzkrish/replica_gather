@@ -9,7 +9,7 @@ A real-time 2D virtual space built with React, Phaser.js, Socket.io, and Postgre
 - **Proximity Chat**: Interact with others in the space.
 - **Database Persistence**: User profiles and positions are saved in PostgreSQL.
 
-## Tech Stack
+## Tech Stack 
 - **Frontend**: React, Vite, Phaser 3, Socket.io-client, Auth0.
 - **Backend**: Node.js, Express, Socket.io, PostgreSQL.
 
