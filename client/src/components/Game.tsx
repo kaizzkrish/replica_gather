@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import Phaser from 'phaser';
-import { config } from '../game/GameConfig';
+import { createGameConfig } from '../game/GameConfig';
 import GameScene from '../game/GameScene';
 import { Socket } from 'socket.io-client';
 
@@ -15,7 +15,7 @@ const Game: React.FC<GameProps> = ({ socket, user }) => {
     useEffect(() => {
         if (!gameRef.current && socket && user) {
             console.log('Initializing Phaser Game with user:', user.name);
-            const game = new Phaser.Game(config);
+            const game = new Phaser.Game(createGameConfig());
             gameRef.current = game;
 
             game.events.once('ready', () => {

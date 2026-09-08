@@ -1,6 +1,10 @@
 import Phaser from 'phaser';
 import { Socket } from 'socket.io-client';
 import { Character } from './Character';
+import { BASE_WIDTH, BASE_HEIGHT } from './GameConfig';
+import { defaultCustomization } from './lpcCatalog';
+
+const DEFAULT_CUSTOMIZATION = defaultCustomization();
 
 export default class GameScene extends Phaser.Scene {
     private player?: Character;
@@ -14,7 +18,17 @@ export default class GameScene extends Phaser.Scene {
 
     private setZoom(zoom: number) {
         this.currentZoom = Phaser.Math.Clamp(zoom, GameScene.MIN_ZOOM, GameScene.MAX_ZOOM);
-        this.cameras.main.setZoom(this.currentZoom);
+        // The canvas backing store is rendered larger than the logical
+        // 800x600 viewport (see GameConfig.computeGameSize, which sizes it
+        // to the window's actual covered pixels x devicePixelRatio, so the
+        // browser never has to upscale it — that upscaling was the source
+        // of blurry/pixelated characters). Compensate with a baseline zoom
+        // equal to that resolution multiplier so world-units-per-screen-
+        // pixel — and therefore updateCameraBounds()/updateFollowState(),
+        // which are written in terms of the logical VIEWPORT_WIDTH/HEIGHT —
+        // stay exactly as if the canvas were still 800x600.
+        const baselineZoom = this.scale.width / GameScene.VIEWPORT_WIDTH;
+        this.cameras.main.setZoom(this.currentZoom * baselineZoom);
         this.updateCameraBounds();
         this.updateFollowState();
         // Keep the on-screen slider in sync with wheel/pinch driven changes
@@ -75,23 +89,10 @@ export default class GameScene extends Phaser.Scene {
         this.load.image('furniture_gaming', '/furniture_gaming.png');
         this.load.image('furniture_home', '/furniture_home.png');
 
-        // Load Base Body
-        this.load.spritesheet('charBase', '/charBase.png?v=fixed', {
-            frameWidth: 160, frameHeight: 160
-        });
-        this.load.spritesheet('charBase_female', '/charBase_female.png', {
-            frameWidth: 160, frameHeight: 160
-        });
-
-        // Load Clothing
-        this.load.spritesheet('charOutfit', '/transparent.png', {
-            frameWidth: 160, frameHeight: 160
-        });
-
-        // Load Hair
-        this.load.spritesheet('charHair', '/transparent.png', {
-            frameWidth: 160, frameHeight: 160
-        });
+        // Character layers are LPC spritesheets loaded on demand per-layer
+        // by lpcLoader.ts (see Character.ts) — not preloaded here, since the
+        // full asset pack is ~2,650 files and only a handful are ever
+        // selected by any one character.
 
         this.load.on('loaderror', (file: any) => {
             console.error('❌ Error loading asset:', file.src);
@@ -126,8 +127,8 @@ export default class GameScene extends Phaser.Scene {
     // back in). MIN_ZOOM goes lower than that on purpose — past ~60%
     // zoomed out, the whole image just shrinks into view with empty
     // canvas space around it rather than being blown up further.
-    private static readonly VIEWPORT_WIDTH = 800;
-    private static readonly VIEWPORT_HEIGHT = 600;
+    private static readonly VIEWPORT_WIDTH = BASE_WIDTH;
+    private static readonly VIEWPORT_HEIGHT = BASE_HEIGHT;
     private static readonly BG_HEIGHT = 1020;
     private static readonly BG_WIDTH = Math.ceil(GameScene.BG_HEIGHT * (2752 / 1536));
 
@@ -162,7 +163,7 @@ export default class GameScene extends Phaser.Scene {
         this.homeBoard.add([boardBg, boardText]);
 
         // ✨ Proximity Hint (Shifted with Board)
-        this.interactHint = this.add.container(150, 100).setAlpha(0).setDepth(100);
+        this.interactHint = this.add.container(150, 100).setAlpha(0).setDepth(10000);
         const hintBg = this.add.graphics();
         hintBg.fillStyle(0xffffff, 0.2);
         hintBg.fillRoundedRect(-50, -15, 100, 30, 15);
@@ -178,13 +179,13 @@ export default class GameScene extends Phaser.Scene {
         this.interactHint.add([hintBg, hintText]);
 
         // UI Setup: Top Bar
-        this.roomBar = this.add.graphics().setScrollFactor(0).setDepth(1000);
+        this.roomBar = this.add.graphics().setScrollFactor(0).setDepth(10001);
         this.roomLabel = this.add.text(400, 22, this.homeName, {
             fontSize: '13px',
             fontFamily: 'Inter, system-ui, sans-serif',
             color: '#ffffff',
             fontStyle: '500'
-        }).setOrigin(0.5).setScrollFactor(0).setDepth(1001);
+        }).setOrigin(0.5).setScrollFactor(0).setDepth(10002);
 
         this.updateRoomUI('🏠 Home', true);
 
@@ -303,20 +304,8 @@ export default class GameScene extends Phaser.Scene {
             this.homeName = data.name.toUpperCase();
             this.updateRoomUI(this.currentRoomName || '🏠 Home');
         });
-        const baseTextures = ['charBase', 'charBase_female'];
-        const directions = ['down', 'left', 'right', 'up'];
-
-        baseTextures.forEach(tex => {
-            const prefix = tex === 'charBase' ? '' : 'female_';
-            directions.forEach((dir, index) => {
-                this.anims.create({
-                    key: `${prefix}walk_${dir}`,
-                    frames: this.anims.generateFrameNumbers(tex, { start: index * 4, end: index * 4 + 3 }),
-                    frameRate: 10,
-                    repeat: -1
-                });
-            });
-        });
+        // Character walk animations are created lazily per-layer-texture by
+        // lpcLoader.ts's ensureWalkAnimsForTexture() as each layer loads.
 
         // Listeners
         this.socket.on('currentPlayers', (players: any) => {
@@ -356,9 +345,20 @@ export default class GameScene extends Phaser.Scene {
 
     private speed = 180; // Pixels per second
     private lastEmitTime = 0;
+    private velocityX = 0;
+    private velocityY = 0;
+    private lastAnimKey = '';
+    private static readonly ACCEL = 12; // Higher = snappier ramp to full speed
+    private static readonly STOP_THRESHOLD = 3; // px/s below which we call it "stopped"
 
     update(time: number, delta: number) {
         if (this.player && this.cursors) {
+            // 0. Depth (Y) Sort — characters further down the room should
+            // render in front of ones further up, so movement reads correctly
+            // as characters cross paths.
+            this.player.setDepth(this.player.y);
+            this.otherPlayers.forEach(char => char.setDepth(char.y));
+
             // 1. Room Detection
             const currentRoom = this.rooms.find(r =>
                 this.player!.x >= r.x && this.player!.x < r.x + r.w &&
@@ -373,30 +373,42 @@ export default class GameScene extends Phaser.Scene {
                 this.updateRoomUI('🏠 Home');
             }
 
-            // 2. Smooth Movement
-            let velocityX = 0;
-            let velocityY = 0;
+            // 2. Smooth Movement — ease toward a target velocity instead of
+            // snapping straight to full speed, so starting/stopping feels
+            // weighted rather than robotic.
+            let targetX = 0;
+            let targetY = 0;
             let animKey = '';
 
-            if (this.cursors.left.isDown) { velocityX = -this.speed; animKey = 'walk_left'; }
-            else if (this.cursors.right.isDown) { velocityX = this.speed; animKey = 'walk_right'; }
-            
-            if (this.cursors.up.isDown) { velocityY = -this.speed; animKey = 'walk_up'; }
-            else if (this.cursors.down.isDown) { velocityY = this.speed; animKey = 'walk_down'; }
+            if (this.cursors.left.isDown) { targetX = -this.speed; animKey = 'walk_left'; }
+            else if (this.cursors.right.isDown) { targetX = this.speed; animKey = 'walk_right'; }
 
-            if (velocityX !== 0 || velocityY !== 0) {
+            if (this.cursors.up.isDown) { targetY = -this.speed; animKey = 'walk_up'; }
+            else if (this.cursors.down.isDown) { targetY = this.speed; animKey = 'walk_down'; }
+
+            const isInputActive = targetX !== 0 || targetY !== 0;
+            if (isInputActive && targetX !== 0 && targetY !== 0) {
                 // Normalize for diagonal movement
-                if (velocityX !== 0 && velocityY !== 0) {
-                    velocityX *= Math.SQRT1_2;
-                    velocityY *= Math.SQRT1_2;
-                }
+                targetX *= Math.SQRT1_2;
+                targetY *= Math.SQRT1_2;
+            }
+            if (isInputActive) this.lastAnimKey = animKey;
 
-                this.player.x += velocityX * (delta / 1000);
-                this.player.y += velocityY * (delta / 1000);
+            // Framerate-independent exponential smoothing toward the target velocity
+            const smoothing = 1 - Math.exp(-GameScene.ACCEL * (delta / 1000));
+            this.velocityX += (targetX - this.velocityX) * smoothing;
+            this.velocityY += (targetY - this.velocityY) * smoothing;
+
+            const isMoving = Math.hypot(this.velocityX, this.velocityY) > GameScene.STOP_THRESHOLD;
+
+            if (isMoving) {
+                this.player.x += this.velocityX * (delta / 1000);
+                this.player.y += this.velocityY * (delta / 1000);
                 this.player.x = Phaser.Math.Clamp(this.player.x, 20, GameScene.BG_WIDTH - 20);
                 this.player.y = Phaser.Math.Clamp(this.player.y, 20, GameScene.BG_HEIGHT - 20);
 
-                this.player.playAnimation(animKey);
+                const activeAnimKey = isInputActive ? animKey : this.lastAnimKey;
+                this.player.playAnimation(activeAnimKey);
 
                 // Walking resumes camera-follow in case a manual drag released
                 // it (unless still zoomed out enough that the whole image fits)
@@ -405,7 +417,7 @@ export default class GameScene extends Phaser.Scene {
                 // Throttle socket updates
                 if (time - this.lastEmitTime > 50) {
                     this.lastEmitTime = time;
-                    this.socket?.emit('playerMovement', { x: this.player.x, y: this.player.y, animationKey: animKey });
+                    this.socket?.emit('playerMovement', { x: this.player.x, y: this.player.y, animationKey: activeAnimKey });
                 }
             } else {
                 this.player.stopAnimation();
@@ -487,7 +499,7 @@ export default class GameScene extends Phaser.Scene {
         if (!playerInfo) return;
         const x = isNaN(Number(playerInfo.x)) ? 400 : Number(playerInfo.x);
         const y = isNaN(Number(playerInfo.y)) ? 300 : Number(playerInfo.y);
-        const custom = playerInfo.customization || { skinColor: '#ffdbac', hairColor: '#4b2c20', hairStyle: 'default', outfitColor: '#646cff', outfitId: 'basic', gender: 'male' };
+        const custom = playerInfo.customization || DEFAULT_CUSTOMIZATION;
         this.player = new Character(this, x, y, playerInfo.name, custom);
         this.player.setDepth(10);
         this.updateFollowState();
@@ -497,7 +509,7 @@ export default class GameScene extends Phaser.Scene {
         if (!playerInfo || this.otherPlayers.has(playerInfo.id)) return;
         const x = isNaN(Number(playerInfo.x)) ? 400 : Number(playerInfo.x);
         const y = isNaN(Number(playerInfo.y)) ? 300 : Number(playerInfo.y);
-        const custom = playerInfo.customization || { skinColor: '#ffdbac', hairColor: '#4b2c20', hairStyle: 'default', outfitColor: '#646cff', outfitId: 'basic', gender: 'male' };
+        const custom = playerInfo.customization || DEFAULT_CUSTOMIZATION;
         const char = new Character(this, x, y, playerInfo.name, custom);
         char.setDepth(9);
         char.syncAlpha(0.15);

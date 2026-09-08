@@ -16,11 +16,16 @@ export const initDb = async () => {
             last_seen TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             customization JSONB DEFAULT '{
-                "skinColor": "#ffdbac",
-                "hairColor": "#4b2c20",
-                "hairStyle": "default",
-                "outfitColor": "#646cff",
-                "outfitId": "basic"
+                "version": 2,
+                "layers": [
+                    { "category": "body", "path": "body/bodies/male/walk.png" },
+                    { "category": "head", "path": "head/heads/human/male/walk.png" },
+                    { "category": "eyes", "path": "eyes/human/adult/default/walk.png" },
+                    { "category": "hair", "path": "hair/page/adult/walk.png" },
+                    { "category": "torso", "path": "torso/clothes/longsleeve/longsleeve2/teen/walk.png" },
+                    { "category": "legs", "path": "legs/pants2/thin/walk.png" },
+                    { "category": "feet", "path": "feet/shoes/basic/thin/walk.png" }
+                ]
             }'
         );`,
         `CREATE TABLE IF NOT EXISTS replica_messages (
