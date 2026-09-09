@@ -18,7 +18,7 @@ export const initDb = async () => {
             customization JSONB DEFAULT '{
                 "version": 2,
                 "layers": [
-                    { "category": "body", "path": "body/bodies/male/walk.png" },
+                    { "category": "body", "path": "body/bodies/teen/walk.png" },
                     { "category": "head", "path": "head/heads/human/male/walk.png" },
                     { "category": "eyes", "path": "eyes/human/adult/default/walk.png" },
                     { "category": "hair", "path": "hair/page/adult/walk.png" },

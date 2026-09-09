@@ -79,7 +79,10 @@ export function animKeyFor(textureKey: string, direction: LpcDirection): string 
 }
 
 const DEFAULT_LAYER_PATHS = [
-    'body/bodies/male/walk.png',
+    // 'teen' body — matches the teen-fitted longsleeve2 torso below. Pairing
+    // that torso with the bulkier 'male' body left visible skin gaps at the
+    // shoulders where the sleeve didn't reach.
+    'body/bodies/teen/walk.png',
     'head/heads/human/male/walk.png',
     'eyes/human/adult/default/walk.png',
     'hair/page/adult/walk.png',

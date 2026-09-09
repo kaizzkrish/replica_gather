@@ -23,10 +23,10 @@ const TABS: { label: string; categories: string[] }[] = [
     { label: 'Accessories', categories: ['hat', 'neck', 'dress', 'shield'] },
 ];
 
-const PRESETS: { name: string; layers: CustomizationLayer[] }[] = [
+const PRESETS: { name: string; group: 'Male' | 'Female'; layers: CustomizationLayer[] }[] = [
     {
-        name: 'Classic', layers: [
-            { category: 'body', path: 'body/bodies/male/walk.png' },
+        name: 'Classic', group: 'Male', layers: [
+            { category: 'body', path: 'body/bodies/teen/walk.png' }, // teen body fits this teen-cut torso correctly
             { category: 'head', path: 'head/heads/human/male/walk.png' },
             { category: 'eyes', path: 'eyes/human/adult/default/walk.png' },
             { category: 'hair', path: 'hair/page/adult/walk.png' },
@@ -36,18 +36,7 @@ const PRESETS: { name: string; layers: CustomizationLayer[] }[] = [
         ],
     },
     {
-        name: 'Bright', layers: [
-            { category: 'body', path: 'body/bodies/female/walk.png' },
-            { category: 'head', path: 'head/heads/human/female/walk.png' },
-            { category: 'eyes', path: 'eyes/human/adult/default/walk.png' },
-            { category: 'hair', path: 'hair/afro/adult/walk.png' },
-            { category: 'torso', path: 'torso/clothes/shortsleeve/shortsleeve/female/walk.png' },
-            { category: 'legs', path: 'legs/pants/thin/walk.png' },
-            { category: 'feet', path: 'feet/shoes/sara/thin/walk.png' },
-        ],
-    },
-    {
-        name: 'Formal', layers: [
+        name: 'Formal', group: 'Male', layers: [
             { category: 'body', path: 'body/bodies/male/walk.png' },
             { category: 'head', path: 'head/heads/human/male/walk.png' },
             { category: 'eyes', path: 'eyes/human/adult/default/walk.png' },
@@ -58,7 +47,7 @@ const PRESETS: { name: string; layers: CustomizationLayer[] }[] = [
         ],
     },
     {
-        name: 'Sporty', layers: [
+        name: 'Sporty', group: 'Male', layers: [
             { category: 'body', path: 'body/bodies/male/walk.png' },
             { category: 'head', path: 'head/heads/human/male/walk.png' },
             { category: 'eyes', path: 'eyes/human/adult/default/walk.png' },
@@ -66,6 +55,40 @@ const PRESETS: { name: string; layers: CustomizationLayer[] }[] = [
             { category: 'torso', path: 'torso/clothes/shortsleeve/shortsleeves/male/walk.png' },
             { category: 'legs', path: 'legs/pants/male/walk.png' },
             { category: 'feet', path: 'feet/shoes/ghillies/male/walk.png' },
+        ],
+    },
+    {
+        name: 'Casual', group: 'Female', layers: [
+            { category: 'body', path: 'body/bodies/female/walk.png' },
+            { category: 'head', path: 'head/heads/human/female/walk.png' },
+            { category: 'eyes', path: 'eyes/human/adult/default/walk.png' },
+            { category: 'hair', path: 'hair/afro/adult/walk.png' },
+            { category: 'torso', path: 'torso/clothes/shortsleeve/shortsleeve/female/walk.png' },
+            { category: 'legs', path: 'legs/pants/thin/walk.png' },
+            { category: 'feet', path: 'feet/shoes/sara/thin/walk.png' },
+        ],
+    },
+    {
+        name: 'Braided', group: 'Female', layers: [
+            { category: 'body', path: 'body/bodies/female/walk.png' },
+            { category: 'head', path: 'head/heads/human/female/walk.png' },
+            { category: 'eyes', path: 'eyes/human/adult/default/walk.png' },
+            { category: 'hair', path: 'hair/braid/adult/bg/walk.png' },
+            { category: 'hair', path: 'hair/braid/adult/fg/walk.png' },
+            { category: 'torso', path: 'torso/clothes/longsleeve/longsleeve/female/walk.png' },
+            { category: 'legs', path: 'legs/hose/thin/walk.png' },
+            { category: 'feet', path: 'feet/boots/basic/thin/walk.png' },
+        ],
+    },
+    {
+        name: 'Bob Cut', group: 'Female', layers: [
+            { category: 'body', path: 'body/bodies/female/walk.png' },
+            { category: 'head', path: 'head/heads/human/female/walk.png' },
+            { category: 'eyes', path: 'eyes/human/adult/default/walk.png' },
+            { category: 'hair', path: 'hair/bob/adult/walk.png' },
+            { category: 'torso', path: 'torso/clothes/longsleeve/longsleeve2/female/walk.png' },
+            { category: 'legs', path: 'legs/formal/thin/walk.png' },
+            { category: 'feet', path: 'feet/boots/revised/thin/walk.png' },
         ],
     },
 ];
@@ -178,7 +201,20 @@ const AvatarCustomizer: React.FC<AvatarCustomizerProps> = ({ currUser, onClose, 
                         <div className="ac-tabs">
                             <button className={activeTab === -1 ? 'active' : ''} onClick={() => setActiveTab(-1)}>Presets</button>
                             {TABS.map((tab, i) => (
-                                <button key={tab.label} className={activeTab === i ? 'active' : ''} onClick={() => setActiveTab(i)}>
+                                <button
+                                    key={tab.label}
+                                    className={activeTab === i ? 'active' : ''}
+                                    onClick={() => {
+                                        setActiveTab(i);
+                                        // Auto-focus whichever category in this tab is
+                                        // already selected, so the color sliders show up
+                                        // immediately — otherwise they stay hidden until
+                                        // the user re-clicks an already-selected swatch,
+                                        // which looks like color changes are being ignored.
+                                        const alreadySelected = tab.categories.find((c) => layerByCategory[c]);
+                                        setFocusedCategory(alreadySelected ?? null);
+                                    }}
+                                >
                                     {tab.label}
                                 </button>
                             ))}
@@ -186,13 +222,20 @@ const AvatarCustomizer: React.FC<AvatarCustomizerProps> = ({ currUser, onClose, 
 
                         <div className="ac-grid">
                             {activeTab === -1 ? (
-                                <div className="ac-preset-list">
-                                    {PRESETS.map((preset) => (
-                                        <button key={preset.name} className="ac-preset-btn" onClick={() => setLayers(preset.layers)}>
-                                            {preset.name}
-                                        </button>
+                                <>
+                                    {(['Male', 'Female'] as const).map((group) => (
+                                        <div className="ac-category-group" key={group}>
+                                            <h5>{group}</h5>
+                                            <div className="ac-preset-list">
+                                                {PRESETS.filter((p) => p.group === group).map((preset) => (
+                                                    <button key={preset.name} className="ac-preset-btn" onClick={() => setLayers(preset.layers)}>
+                                                        {preset.name}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </div>
                                     ))}
-                                </div>
+                                </>
                             ) : (
                                 TABS[activeTab].categories.map((category) => (
                                     <CategorySwatches

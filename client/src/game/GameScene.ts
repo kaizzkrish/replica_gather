@@ -330,6 +330,19 @@ export default class GameScene extends Phaser.Scene {
             if (char) { char.destroy(); this.otherPlayers.delete(id); }
         });
 
+        // Broadcast when anyone (including ourselves) saves a new look —
+        // without this, a saved customization change never appears until
+        // the page is reloaded, since characters otherwise only read
+        // customization once, at construction time.
+        this.socket.on('profileUpdated', (p: any) => {
+            if (!p?.customization) return;
+            if (p.id === this.socket?.id) {
+                this.player?.updateCustomization(p.customization);
+            } else {
+                this.otherPlayers.get(p.id)?.updateCustomization(p.customization);
+            }
+        });
+
         const joinRoom = () => {
             this.socket?.emit('joinRoom', {
                 room: 'main-space',

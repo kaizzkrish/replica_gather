@@ -30,15 +30,20 @@ export const useAuth = () => {
         }
 
         // Support old guest mode as fallback if needed
-        const isGuest = new URLSearchParams(window.location.search).get('guest') === 'true';
+        const params = new URLSearchParams(window.location.search);
+        const isGuest = params.get('guest') === 'true';
         if (isGuest) {
+            // userId distinguishes separate guest sessions (e.g. two tabs
+            // testing multiplayer) — without it every guest shares one
+            // identity, one saved customization, and one DB row.
+            const guestId = params.get('userId') || '1';
             return {
                 isAuthenticated: true,
                 user: {
-                    sub: 'guest',
-                    name: 'Guest Explorer',
+                    sub: `guest-${guestId}`,
+                    name: `Guest Explorer ${guestId}`,
                     picture: 'https://cdn-icons-png.flaticon.com/512/1144/1144760.png',
-                    email: 'guest@example.com'
+                    email: `guest-${guestId}@example.com`
                 },
                 isLoading: false,
                 logout: () => {
