@@ -1,6 +1,10 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Socket } from 'socket.io-client';
-import { layerZIndex, REQUIRED_CATEGORIES, categoryOf, defaultCustomization } from '../game/lpcCatalog';
+import {
+    layerZIndex, REQUIRED_CATEGORIES, categoryOf, defaultCustomization,
+    CLOTHING_CATEGORIES, garmentKeyOf, bodyTypeOf, resolveGarmentFit, refitClothingLayers,
+    cssFilterFor,
+} from '../game/lpcCatalog';
 import type { Customization, CustomizationLayer } from '../game/lpcCatalog';
 import '../styles/avatarCustomizer.css';
 
@@ -11,10 +15,9 @@ interface AvatarCustomizerProps {
     onSave: (customization: Customization) => void;
 }
 
-// Which top-level catalog folders show up under each tab. 'body' is
-// intentionally never shown here — it's set from presets/defaults only,
-// matching the reference project.
+// Which top-level catalog folders show up under each tab.
 const TABS: { label: string; categories: string[] }[] = [
+    { label: 'Body', categories: ['body'] },
     { label: 'Face', categories: ['head', 'eyes', 'facial', 'beards'] },
     { label: 'Hair', categories: ['hair'] },
     { label: 'Top', categories: ['torso', 'arms', 'shoulders'] },
@@ -22,6 +25,29 @@ const TABS: { label: string; categories: string[] }[] = [
     { label: 'Shoes', categories: ['feet'] },
     { label: 'Accessories', categories: ['hat', 'neck', 'dress', 'shield'] },
 ];
+
+// The pack's 'body/' folder also holds non-body-type items (tails, wings,
+// wound overlays) that share the same top-level category as the actual
+// body archetypes — filter the Body tab down to just body/bodies/*, and
+// give each archetype a readable label (filenames alone aren't
+// self-explanatory in a small thumbnail).
+//
+// The go-actor copy of this pack only shipped a walk.png for male/female/
+// teen — muscular/child/pregnant were listed in its catalog but only had
+// combat (hurt/slash) frames. Their walk.png files were pulled in directly
+// from the upstream LiberatedPixelCup/Universal-LPC-Spritesheet-Character-
+// Generator repo (same open-license family as the rest of the pack —
+// CC0/CC-BY-SA/CC-BY/OGA-BY/GPL, verified per-asset in its own CREDITS.csv;
+// track attribution before any public deployment, same as the rest of
+// this pack).
+const BODY_TYPE_LABELS: Record<string, string> = {
+    'body/bodies/male/walk.png': 'Male',
+    'body/bodies/female/walk.png': 'Female',
+    'body/bodies/teen/walk.png': 'Teen',
+    'body/bodies/muscular/walk.png': 'Muscular',
+    'body/bodies/child/walk.png': 'Child',
+    'body/bodies/pregnant/walk.png': 'Pregnant',
+};
 
 const PRESETS: { name: string; group: 'Male' | 'Female'; layers: CustomizationLayer[] }[] = [
     {
@@ -129,16 +155,27 @@ const AvatarCustomizer: React.FC<AvatarCustomizerProps> = ({ currUser, onClose, 
             const withoutCategory = prev.filter((l) => categoryOf(l.path) !== category);
             if (path === null) return withoutCategory;
             const existing = prev.find((l) => categoryOf(l.path) === category);
-            return [...withoutCategory, {
+            const next = [...withoutCategory, {
                 category, path,
                 hue: existing?.hue, saturation: existing?.saturation, brightness: existing?.brightness,
             }];
+            // Switching body type: re-fit every already-picked garment to the
+            // new body so clothes don't stay mismatched (the sleeve-gap bug).
+            return category === 'body' ? refitClothingLayers(next, bodyTypeOf(next), catalog) : next;
         });
         setFocusedCategory(category);
     };
 
     const updateColor = (category: string, field: 'hue' | 'saturation' | 'brightness', value: number) => {
         setLayers((prev) => prev.map((l) => (categoryOf(l.path) === category ? { ...l, [field]: value } : l)));
+    };
+
+    const resetColor = (category: string) => {
+        setLayers((prev) => prev.map((l) => {
+            if (categoryOf(l.path) !== category) return l;
+            const { hue: _hue, saturation: _saturation, brightness: _brightness, ...rest } = l;
+            return rest as CustomizationLayer;
+        }));
     };
 
     const handleSave = () => {
@@ -159,19 +196,26 @@ const AvatarCustomizer: React.FC<AvatarCustomizerProps> = ({ currUser, onClose, 
                     <div className="ac-preview-panel">
                         <div className="ac-preview-stage">
                             <div className="lpc-preview walking">
-                                {sortedForPreview.map((layer) => (
-                                    <div
-                                        key={layer.path}
-                                        className="lpc-preview-layer"
-                                        style={{
-                                            backgroundImage: `url(${SPRITE_BASE}${layer.path})`,
-                                            filter: layer.hue !== undefined
-                                                ? `hue-rotate(${layer.hue}deg) saturate(${layer.saturation ?? 1}) brightness(${layer.brightness ?? 1})`
-                                                : undefined,
-                                            ['--bg-y' as any]: `-${PREVIEW_ROW * 64}px`,
-                                        }}
-                                    />
-                                ))}
+                                {sortedForPreview.map((layer) => {
+                                    // A real CSS filter — the exact same hue-rotate/
+                                    // saturate/brightness operation Character.ts applies
+                                    // in-game via Phaser's ColorMatrix FX, so this preview
+                                    // and the actual rendered character match, and both
+                                    // preserve the garment's own shading instead of
+                                    // flattening it to one flat tint.
+                                    const filter = cssFilterFor(layer);
+                                    return (
+                                        <div
+                                            key={layer.path}
+                                            className="lpc-preview-layer"
+                                            style={{
+                                                backgroundImage: `url(${SPRITE_BASE}${layer.path})`,
+                                                filter: filter ?? undefined,
+                                                ['--bg-y' as any]: `-${PREVIEW_ROW * 64}px`,
+                                            }}
+                                        />
+                                    );
+                                })}
                             </div>
                         </div>
 
@@ -185,14 +229,17 @@ const AvatarCustomizer: React.FC<AvatarCustomizerProps> = ({ currUser, onClose, 
                                 </label>
                                 <label>
                                     Saturation
-                                    <input type="range" min={0} max={3} step={0.1} value={focusedLayer?.saturation ?? 1}
+                                    <input type="range" min={0} max={3} step={0.05} value={focusedLayer?.saturation ?? 1}
                                         onChange={(e) => updateColor(focusedCategory, 'saturation', Number(e.target.value))} />
                                 </label>
                                 <label>
                                     Brightness
-                                    <input type="range" min={0.2} max={2} step={0.1} value={focusedLayer?.brightness ?? 1}
+                                    <input type="range" min={0} max={2} step={0.05} value={focusedLayer?.brightness ?? 1}
                                         onChange={(e) => updateColor(focusedCategory, 'brightness', Number(e.target.value))} />
                                 </label>
+                                <button className="ac-reset-color-btn" onClick={() => resetColor(focusedCategory)}>
+                                    Reset Color
+                                </button>
                             </div>
                         )}
                     </div>
@@ -244,6 +291,7 @@ const AvatarCustomizer: React.FC<AvatarCustomizerProps> = ({ currUser, onClose, 
                                         catalog={catalog}
                                         selected={layerByCategory[category]?.path}
                                         removable={!REQUIRED_CATEGORIES.includes(category)}
+                                        bodyType={bodyTypeOf(layers)}
                                         onSelect={(path) => selectItem(category, path)}
                                     />
                                 ))
@@ -261,15 +309,31 @@ const AvatarCustomizer: React.FC<AvatarCustomizerProps> = ({ currUser, onClose, 
     );
 };
 
-function CategorySwatches({ category, catalog, selected, removable, onSelect }: {
-    category: string; catalog: string[]; selected?: string; removable: boolean; onSelect: (path: string | null) => void;
+function CategorySwatches({ category, catalog, selected, removable, bodyType, onSelect }: {
+    category: string; catalog: string[]; selected?: string; removable: boolean; bodyType: string; onSelect: (path: string | null) => void;
 }) {
-    const items = catalog.filter((p) => categoryOf(p) === category);
-    if (items.length === 0) return null;
+    // The 'body' folder also holds non-body-type items (tails, wings, wound
+    // overlays) under the same top-level category — restrict to the actual
+    // body archetypes for this one category.
+    const prefix = category === 'body' ? 'body/bodies/' : `${category}/`;
+    const rawItems = catalog.filter((p) => p.startsWith(prefix));
+    if (rawItems.length === 0) return null;
+
+    // Clothing categories offer one swatch per garment (not per fit
+    // variant) — the exact file used is whichever fit matches the current
+    // body type, resolved via resolveGarmentFit. This is what makes a
+    // selected garment automatically re-fit when the body type changes,
+    // instead of leaving the player on a mismatched male/teen/etc. cut.
+    const isClothing = CLOTHING_CATEGORIES.includes(category);
+    const items = isClothing
+        ? [...new Set(rawItems.map((p) => garmentKeyOf(p)))]
+            .map((garmentKey) => resolveGarmentFit(garmentKey, bodyType, catalog))
+            .filter((p): p is string => !!p)
+        : rawItems;
 
     return (
         <div className="ac-category-group">
-            <h5>{category}</h5>
+            <h5>{category === 'body' ? 'Body Type' : category}</h5>
             <div className="ac-swatch-row">
                 {removable && (
                     <button
@@ -279,18 +343,30 @@ function CategorySwatches({ category, catalog, selected, removable, onSelect }: 
                         None
                     </button>
                 )}
-                {items.map((path) => (
-                    <button
-                        key={path}
-                        className={`ac-swatch${selected === path ? ' selected' : ''}`}
-                        style={{
-                            backgroundImage: `url(${SPRITE_BASE}${path})`,
-                            backgroundPosition: `0px -${PREVIEW_ROW * 64}px`,
-                        }}
-                        onClick={() => onSelect(path)}
-                        title={path}
-                    />
-                ))}
+                {items.map((path) => {
+                    // For clothing, "selected" is a specific fit's path, but the
+                    // garment itself might be selected under a different fit
+                    // (e.g. picked while on a male body, now viewing as female) —
+                    // compare by garment identity, not exact path, so the
+                    // checkmark still shows on the right swatch after a refit.
+                    const isSelected = isClothing
+                        ? !!selected && garmentKeyOf(selected) === garmentKeyOf(path)
+                        : selected === path;
+                    return (
+                        <div className="ac-swatch-item" key={path}>
+                            <button
+                                className={`ac-swatch${isSelected ? ' selected' : ''}`}
+                                style={{
+                                    backgroundImage: `url(${SPRITE_BASE}${path})`,
+                                    backgroundPosition: `0px -${PREVIEW_ROW * 64}px`,
+                                }}
+                                onClick={() => onSelect(path)}
+                                title={BODY_TYPE_LABELS[path] ?? path}
+                            />
+                            {BODY_TYPE_LABELS[path] && <span className="ac-swatch-label">{BODY_TYPE_LABELS[path]}</span>}
+                        </div>
+                    );
+                })}
             </div>
         </div>
     );

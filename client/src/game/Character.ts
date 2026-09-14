@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { LPC_FRAME_LAYOUT, layerZIndex, textureKeyFor, animKeyFor, defaultCustomization } from './lpcCatalog';
+import { LPC_FRAME_LAYOUT, layerZIndex, textureKeyFor, animKeyFor, defaultCustomization, hasColorAdjustment } from './lpcCatalog';
 import type { Customization, CustomizationLayer, LpcDirection } from './lpcCatalog';
 import { ensureLayerTextureLoaded, ensureWalkAnimsForTexture, idleFrameForDirection } from './lpcLoader';
 
@@ -17,6 +17,11 @@ export class Character extends Phaser.GameObjects.Container {
     // One sprite per selected layer, keyed by its catalog path (bg/fg hair
     // sub-layers naturally get distinct keys since their paths differ).
     private layerSprites: Map<string, Phaser.GameObjects.Sprite> = new Map();
+    // The ColorMatrix FX controller for each sprite, keyed the same way —
+    // created lazily on first color adjustment and reused across
+    // updateCustomization() calls so recoloring never stacks duplicate
+    // effects on the same sprite.
+    private layerColorFx: Map<string, Phaser.FX.ColorMatrix> = new Map();
     private currentDirection: LpcDirection = 'down';
 
     // Bumped on every updateCustomization() call so async layer loads that
@@ -83,6 +88,7 @@ export class Character extends Phaser.GameObjects.Container {
             if (!newPaths.has(path)) {
                 sprite.destroy();
                 this.layerSprites.delete(path);
+                this.layerColorFx.delete(path);
             }
         }
 
@@ -90,7 +96,7 @@ export class Character extends Phaser.GameObjects.Container {
         newLayers.forEach((layer) => {
             const existing = this.layerSprites.get(layer.path);
             if (existing) {
-                this.applyTint(existing, layer);
+                this.applyColor(existing, layer);
             } else {
                 this.loadAndAddLayer(layer, gen);
             }
@@ -112,30 +118,54 @@ export class Character extends Phaser.GameObjects.Container {
 
         const sprite = this.scene.add.sprite(0, Character.BODY_Y, key, idleFrameForDirection(this.currentDirection));
         sprite.setDisplaySize(Character.BODY_SIZE, Character.BODY_SIZE);
-        this.applyTint(sprite, layer);
+        this.applyColor(sprite, layer);
 
         this.layerSprites.set(layer.path, sprite);
         this.add(sprite);
         this.resortLayers();
     }
 
-    // Tier-1 recoloring approximation: a true CSS hue-rotate/saturate/
-    // brightness filter (as the reference project uses) shifts each pixel's
-    // own hue while preserving its baked-in shading; setTint() instead
-    // multiplies every pixel by one flat color, which is visually flatter
-    // but far simpler and needs no custom shader. Good enough to make color
-    // choices clearly readable — a shader-based upgrade is a deferred,
-    // separately-scoped follow-up (see the LPC character system plan).
-    private applyTint(sprite: Phaser.GameObjects.Sprite, layer: CustomizationLayer) {
-        if (layer.hue === undefined) {
-            sprite.clearTint();
+    // True per-pixel recoloring via Phaser's built-in ColorMatrix FX
+    // (WebGL-only), not setTint(). setTint() multiplies every pixel by one
+    // flat target color, which flattens a garment's own baked-in shading/
+    // highlights/folds into a single hue — this is what made e.g. brown
+    // leather armor turn uniformly gray instead of a shaded version of the
+    // picked color. ColorMatrix's .hue()/.saturate()/.brightness() apply
+    // the same matrix transforms as CSS hue-rotate()/saturate()/
+    // brightness() (verified against Phaser's source: .hue() uses the
+    // identical W3C luminance-weighted rotation matrix), so each pixel
+    // keeps its own relative shading — matching how the go-actor reference
+    // project recolors (true CSS filters on its DOM-layered sprites).
+    //
+    // The FX controller is created once per sprite and reused on every
+    // subsequent color update (re-adding would stack duplicate effects).
+    // hue() is always called first with multiply=false, which resets the
+    // matrix and applies the rotation in one step (rotation 0 collapses to
+    // the identity matrix) — saturate()/brightness() then multiply on top
+    // of that base, composing all three like a CSS filter chain.
+    private applyColor(sprite: Phaser.GameObjects.Sprite, layer: CustomizationLayer) {
+        if (!hasColorAdjustment(layer)) {
+            const fx = this.layerColorFx.get(layer.path);
+            if (fx) fx.active = false;
             return;
         }
-        const hue01 = (((layer.hue % 360) + 360) % 360) / 360;
-        const sat01 = Phaser.Math.Clamp((layer.saturation ?? 1) / 2, 0, 1);
-        const val01 = Phaser.Math.Clamp((layer.brightness ?? 1) / 1.5, 0.2, 1);
-        const rgb = Phaser.Display.Color.HSVToRGB(hue01, sat01, val01) as Phaser.Types.Display.ColorObject;
-        sprite.setTint(Phaser.Display.Color.GetColor(rgb.r, rgb.g, rgb.b));
+
+        if (!sprite.preFX) return; // Canvas renderer fallback: no FX pipeline available
+
+        let fx = this.layerColorFx.get(layer.path);
+        if (!fx) {
+            fx = sprite.preFX.addColorMatrix();
+            this.layerColorFx.set(layer.path, fx);
+        }
+        fx.active = true;
+
+        fx.hue(layer.hue ?? 0, false);
+        if (layer.saturation !== undefined && layer.saturation !== 1) {
+            fx.saturate(layer.saturation - 1, true);
+        }
+        if (layer.brightness !== undefined && layer.brightness !== 1) {
+            fx.brightness(layer.brightness, true);
+        }
     }
 
     // Recomputes stacking order and rebuilds the container's child list to

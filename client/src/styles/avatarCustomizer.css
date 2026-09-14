@@ -123,6 +123,23 @@
     width: 100%;
 }
 
+.ac-reset-color-btn {
+    align-self: flex-start;
+    margin-top: 4px;
+    padding: 4px 10px;
+    font-size: 0.72rem;
+    background: transparent;
+    border: 1px solid var(--primary-color);
+    color: var(--primary-color);
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.ac-reset-color-btn:hover {
+    background: var(--primary-color);
+    color: #fff;
+}
+
 .ac-browser-panel {
     flex: 1;
     display: flex;
@@ -175,6 +192,19 @@
     display: flex;
     flex-wrap: wrap;
     gap: 8px;
+}
+
+.ac-swatch-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+}
+
+.ac-swatch-label {
+    font-size: 0.65rem;
+    color: var(--text-main);
+    text-align: center;
 }
 
 .ac-swatch {
