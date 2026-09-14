@@ -8,6 +8,7 @@ import Profile from './components/Profile';
 import Sidebar from './components/Sidebar';
 import ZoomControl from './components/ZoomControl';
 import { SOCKET_URL } from './config/env';
+import { defaultCustomization } from './game/lpcCatalog';
 import './styles/index.css';
 import './styles/sidebar.css';
 
@@ -42,7 +43,7 @@ function App() {
       name: user.name,
       picture: user.picture || 'https://cdn-icons-png.flaticon.com/512/1144/1144760.png',
       email: (user as any).email || `guest-${guestUserId}@example.com`,
-      customization: { skinColor: '#ffdbac', hairColor: '#4b2c20', hairStyle: 'default', outfitColor: '#646cff', outfitId: 'basic' }
+      customization: defaultCustomization()
     });
 
     console.log('📡 Game attempting to connect to:', SOCKET_URL);

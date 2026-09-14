@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { useAuth0 } from '@auth0/auth0-react';
 import { Socket } from 'socket.io-client';
+import AvatarCustomizer from './AvatarCustomizer';
+import type { Customization } from '../game/lpcCatalog';
 
 interface ProfileProps {
     socket: Socket | null;
@@ -13,14 +15,7 @@ const Profile: React.FC<ProfileProps> = ({ socket, currUser, onClose }) => {
     const [isEditing, setIsEditing] = useState(false);
     const [editedName, setEditedName] = useState(currUser?.name || '');
     const [editedPicture, setEditedPicture] = useState(currUser?.picture || '');
-    const [customization, setCustomization] = useState(currUser?.customization || {
-        skinColor: '#ffdbac',
-        hairColor: '#4b2c20',
-        hairStyle: 'default',
-        outfitColor: '#646cff',
-        outfitId: 'basic',
-        gender: 'male'
-    });
+    const [showAvatarCustomizer, setShowAvatarCustomizer] = useState(false);
 
     if (!currUser) return null;
 
@@ -29,14 +24,21 @@ const Profile: React.FC<ProfileProps> = ({ socket, currUser, onClose }) => {
             socket.emit('updateProfile', {
                 name: editedName,
                 picture: editedPicture,
-                customization: customization
+                customization: currUser.customization,
             });
         }
         setIsEditing(false);
     };
 
-    const handleColorChange = (key: string, value: string) => {
-        setCustomization((prev: any) => ({ ...prev, [key]: value }));
+    const handleAvatarSave = (customization: Customization) => {
+        if (socket) {
+            socket.emit('updateProfile', {
+                name: editedName,
+                picture: editedPicture,
+                customization,
+            });
+        }
+        setShowAvatarCustomizer(false);
     };
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -101,51 +103,6 @@ const Profile: React.FC<ProfileProps> = ({ socket, currUser, onClose }) => {
                             )}
                         </div>
 
-                        <div className="customization-section">
-                            <h3>Avatar Design</h3>
-                            <div className="customization-grid">
-                                <div className="color-item">
-                                    <label>Skin Tone</label>
-                                    <input
-                                        type="color"
-                                        value={customization.skinColor}
-                                        disabled={!isEditing}
-                                        onChange={(e) => handleColorChange('skinColor', e.target.value)}
-                                    />
-                                </div>
-                                <div className="color-item">
-                                    <label>Hair Color</label>
-                                    <input
-                                        type="color"
-                                        value={customization.hairColor}
-                                        disabled={!isEditing}
-                                        onChange={(e) => handleColorChange('hairColor', e.target.value)}
-                                    />
-                                </div>
-                                <div className="color-item">
-                                    <label>Outfit Color</label>
-                                    <input
-                                        type="color"
-                                        value={customization.outfitColor}
-                                        disabled={!isEditing}
-                                        onChange={(e) => handleColorChange('outfitColor', e.target.value)}
-                                    />
-                                </div>
-                                <div className="color-item">
-                                    <label>Character Type</label>
-                                    <select
-                                        value={customization.gender}
-                                        disabled={!isEditing}
-                                        onChange={(e) => handleColorChange('gender', e.target.value)}
-                                        className="gender-select"
-                                    >
-                                        <option value="male">Male</option>
-                                        <option value="female">Female</option>
-                                    </select>
-                                </div>
-                            </div>
-                        </div>
-
                         <div className="info-group">
                             <label>Email Address</label>
                             <div className="info-value email-readonly">{currUser.email}</div>
@@ -156,12 +113,16 @@ const Profile: React.FC<ProfileProps> = ({ socket, currUser, onClose }) => {
                 <div className="profile-actions">
                     {isEditing ? (
                         <div className="edit-actions">
-                            <button onClick={handleSave} className="save-btn">Save Avatar</button>
+                            <button onClick={handleSave} className="save-btn">Save Changes</button>
                             <button onClick={() => setIsEditing(false)} className="cancel-btn">Cancel</button>
                         </div>
                     ) : (
-                        <button onClick={() => setIsEditing(true)} className="edit-profile-btn">Customize Look</button>
+                        <button onClick={() => setIsEditing(true)} className="edit-profile-btn">Edit Name / Photo</button>
                     )}
+
+                    <button onClick={() => setShowAvatarCustomizer(true)} className="edit-profile-btn">
+                        Customize Look
+                    </button>
 
                     <button
                         onClick={() => logout({ logoutParams: { returnTo: window.location.origin } })}
@@ -171,6 +132,15 @@ const Profile: React.FC<ProfileProps> = ({ socket, currUser, onClose }) => {
                     </button>
                 </div>
             </div>
+
+            {showAvatarCustomizer && (
+                <AvatarCustomizer
+                    socket={socket}
+                    currUser={currUser}
+                    onClose={() => setShowAvatarCustomizer(false)}
+                    onSave={handleAvatarSave}
+                />
+            )}
         </div>
     );
 };
