@@ -9,12 +9,14 @@ interface SidebarProps {
   onItemClick: (item: string) => void;
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ 
-  user, 
-  onLogout, 
-  onProfileClick, 
+const DEFAULT_PICTURE = 'https://cdn-icons-png.flaticon.com/512/1144/1144760.png';
+
+const Sidebar: React.FC<SidebarProps> = ({
+  user,
+  onLogout,
+  onProfileClick,
   activeItem = 'connect',
-  onItemClick 
+  onItemClick
 }) => {
   const [isExpanded, setIsExpanded] = useState(false);
 
@@ -55,21 +57,11 @@ const Sidebar: React.FC<SidebarProps> = ({
 
       <div className="sidebar-footer">
         <div className="sidebar-user" onClick={onProfileClick}>
-          {user?.picture ? (
-            <img src={user.picture} alt={user.name} className="sidebar-user-avatar" />
-          ) : (
-            <div className="sidebar-user-avatar" style={{ 
-              background: '#a88dc0', 
-              display: 'flex', 
-              alignItems: 'center', 
-              justifyContent: 'center',
-              color: 'white',
-              fontSize: '14px',
-              fontWeight: 'bold'
-            }}>
-              {user?.name?.[0] || '?'}
-            </div>
-          )}
+          <img
+            src={(user?.picture && user.picture !== DEFAULT_PICTURE) ? user.picture : '/profile_icon.jpeg'}
+            alt={user?.name || 'Guest'}
+            className="sidebar-user-avatar"
+          />
           <div className="sidebar-user-info">
             <span className="sidebar-user-name">{user?.name || 'Guest'}</span>
             <span className="sidebar-user-status">Online</span>
