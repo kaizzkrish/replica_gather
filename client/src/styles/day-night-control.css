@@ -12,22 +12,17 @@
     position: relative;
     background: linear-gradient(90deg, #f19af3, #f099b5);
     line-height: 0;
-    perspective: 400px;
     font-size: var(--size);
     border-radius: var(--size);
     box-shadow: 0 8px 32px rgba(74, 52, 94, 0.15);
 }
 
 .dn-switch input[type="checkbox"],
-.dn-switch label,
-.dn-switch label::before,
-.dn-switch label::after,
-.dn-switch {
+.dn-switch label {
     appearance: none;
     display: inline-block;
     border-radius: var(--size);
     border: 0;
-    transition: 0.35s ease-in-out;
     box-sizing: border-box;
     cursor: pointer;
 }
@@ -35,8 +30,7 @@
 .dn-switch label {
     width: calc(2.2 * var(--size));
     height: var(--size);
-    background: #d7d7d7;
-    overflow: hidden;
+    background: transparent;
 }
 
 .dn-switch input[type="checkbox"] {
@@ -46,60 +40,17 @@
     height: calc(0.8 * var(--size));
     top: calc(0.1 * var(--size));
     left: calc(0.1 * var(--size));
-    background: linear-gradient(45deg, #dedede, #ffffff);
+    background-color: #ffffff;
+    background-image: url('/toggle_switch/day_toggle.jpeg');
+    background-size: cover;
+    background-position: center;
     box-shadow: 0 6px 7px rgba(0, 0, 0, 0.3);
     outline: none;
     margin: 0;
+    transition: left 0.35s ease-in-out;
 }
 
 .dn-switch input[type="checkbox"]:checked {
     left: calc(1.3 * var(--size));
-}
-
-.dn-switch input[type="checkbox"]:checked + label {
-    background: transparent;
-}
-
-.dn-switch label::before,
-.dn-switch label::after {
-    content: "· ·";
-    position: absolute;
-    overflow: hidden;
-    left: calc(0.15 * var(--size));
-    top: calc(0.5 * var(--size));
-    height: var(--size);
-    letter-spacing: calc(-0.04 * var(--size));
-    color: #9b9b9b;
-    font-family: "Times New Roman", serif;
-    z-index: 2;
-    font-size: calc(0.6 * var(--size));
-    border-radius: 0;
-    transform-origin: 0 0 calc(-0.5 * var(--size));
-    backface-visibility: hidden;
-}
-
-.dn-switch label::after {
-    content: "●";
-    top: calc(0.65 * var(--size));
-    left: calc(0.2 * var(--size));
-    height: calc(0.1 * var(--size));
-    width: calc(0.35 * var(--size));
-    font-size: calc(0.2 * var(--size));
-    transform-origin: 0 0 calc(-0.4 * var(--size));
-}
-
-.dn-switch input[type="checkbox"]:checked + label::before,
-.dn-switch input[type="checkbox"]:checked + label::after {
-    left: calc(1.55 * var(--size));
-    top: calc(0.4 * var(--size));
-    line-height: calc(0.1 * var(--size));
-    transform: rotateY(360deg);
-}
-
-.dn-switch input[type="checkbox"]:checked + label::after {
-    height: calc(0.16 * var(--size));
-    top: calc(0.55 * var(--size));
-    left: calc(1.6 * var(--size));
-    font-size: calc(0.6 * var(--size));
-    line-height: 0;
+    background-image: url('/toggle_switch/night_toggle.png');
 }

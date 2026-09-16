@@ -111,7 +111,7 @@
 .chat-btn .item-kitty { background-image: url('/kitties/Chat.png'); }
 .music-btn .item-kitty { background-image: url('/kitties/Music.png'); }
 .settings-btn .item-kitty { background-image: url('/kitties/Settings.png'); }
-.logout-btn .item-kitty { background-image: url('/kitties/logout_kitty.png'); }
+.logout-btn .item-kitty { background-image: url('/kitties/logout.png'); }
 .user-btn .item-kitty { background-image: url('/profile_card_banner.png'); }
 
 .connect-btn .item-kitty { background-color: rgba(248, 225, 238, 0.5); }
