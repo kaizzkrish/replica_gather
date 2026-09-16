@@ -340,7 +340,10 @@ export default class GameScene extends Phaser.Scene {
         };
         const endPan = () => { isPanning = false; };
 
-        const mouseDownHandler = (e: MouseEvent) => beginPan(e.clientX, e.clientY);
+        const mouseDownHandler = (e: MouseEvent) => {
+            if (e.button !== 0) return; // right/middle click drive the character context menu, not panning
+            beginPan(e.clientX, e.clientY);
+        };
         const mouseMoveHandler = (e: MouseEvent) => updatePan(e.clientX, e.clientY);
         canvas.addEventListener('mousedown', mouseDownHandler);
         window.addEventListener('mousemove', mouseMoveHandler);
@@ -627,6 +630,13 @@ export default class GameScene extends Phaser.Scene {
         const custom = playerInfo.customization || DEFAULT_CUSTOMIZATION;
         this.player = new Character(this, x, y, playerInfo.name, custom);
         this.player.setDepth(10);
+        this.player.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
+            if (!pointer.rightButtonDown()) return;
+            const evt = pointer.event as MouseEvent;
+            window.dispatchEvent(new CustomEvent('character-context-menu', {
+                detail: { x: evt.clientX, y: evt.clientY }
+            }));
+        });
         this.updateFollowState();
     }
 

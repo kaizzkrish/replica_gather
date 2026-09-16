@@ -1,0 +1,52 @@
+.char-ctx-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 3000;
+}
+
+.char-ctx-menu {
+    position: fixed;
+    min-width: 170px;
+    padding: 6px;
+    background: var(--card-bg);
+    border: 1px solid var(--glass-border);
+    border-radius: 12px;
+    box-shadow: var(--shadow-premium);
+    animation: char-ctx-pop 0.12s ease-out;
+}
+
+@keyframes char-ctx-pop {
+    from { opacity: 0; transform: scale(0.96); }
+    to { opacity: 1; transform: scale(1); }
+}
+
+.char-ctx-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    padding: 8px 10px;
+    border: none;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--text-main);
+    font-size: 0.85rem;
+    font-weight: 600;
+    text-align: left;
+    cursor: pointer;
+    transition: background 0.15s ease, color 0.15s ease;
+}
+
+.char-ctx-item i {
+    font-size: 15px;
+    color: var(--primary-color);
+}
+
+.char-ctx-item:hover {
+    background: var(--primary-color);
+    color: #ffffff;
+}
+
+.char-ctx-item:hover i {
+    color: #ffffff;
+}

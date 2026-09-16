@@ -43,6 +43,10 @@ export function createGameConfig(): Phaser.Types.Core.GameConfig {
             antialias: true,
             roundPixels: true
         },
+        // Right-clicking the character opens a custom "Customize" menu (see
+        // GameScene's player 'pointerdown' handler) — suppress the browser's
+        // native context menu over the canvas so it doesn't appear alongside it.
+        disableContextMenu: true,
         physics: {
             default: 'arcade',
             arcade: {

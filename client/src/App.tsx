@@ -8,8 +8,11 @@ import Profile from './components/Profile';
 import Sidebar from './components/Sidebar';
 import ZoomControl from './components/ZoomControl';
 import DayNightControl from './components/DayNightControl';
+import CharacterContextMenu from './components/CharacterContextMenu';
+import AvatarCustomizer from './components/AvatarCustomizer';
 import { SOCKET_URL } from './config/env';
 import { defaultCustomization } from './game/lpcCatalog';
+import type { Customization } from './game/lpcCatalog';
 import './styles/index.css';
 import './styles/sidebar.css';
 
@@ -34,6 +37,7 @@ function App() {
   const [currUser, setCurrUser] = useState<any>(null);
   const [socket, setSocket] = useState<Socket | null>(null);
   const [showProfile, setShowProfile] = useState(false);
+  const [showAvatarCustomizer, setShowAvatarCustomizer] = useState(false);
   const [activeSidebarItem, setActiveSidebarItem] = useState('connect');
 
   useEffect(() => {
@@ -97,10 +101,26 @@ function App() {
       ) : (
         <>
           {showProfile && <Profile socket={socket} currUser={currUser} onClose={() => setShowProfile(false)} />}
+          {showAvatarCustomizer && (
+            <AvatarCustomizer
+              socket={socket}
+              currUser={currUser}
+              onClose={() => setShowAvatarCustomizer(false)}
+              onSave={(customization: Customization) => {
+                socket?.emit('updateProfile', {
+                  name: currUser?.name,
+                  picture: currUser?.picture,
+                  customization,
+                });
+                setShowAvatarCustomizer(false);
+              }}
+            />
+          )}
           <Game socket={socket} user={currUser || user} />
+          <CharacterContextMenu onCustomize={() => setShowAvatarCustomizer(true)} />
 
           <div className="ui-overlay">
-            <Sidebar 
+            <Sidebar
               user={currUser || user} 
               onLogout={logout} 
               onProfileClick={() => setShowProfile(true)}

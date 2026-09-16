@@ -49,6 +49,11 @@ export class Character extends Phaser.GameObjects.Container {
         this.updateCustomization(customization);
 
         scene.add.existing(this);
+
+        // Hit area covering name text + body + shadow, so pointer events
+        // (used for the right-click "Customize" menu) register anywhere
+        // over the visible character, not just its (0,0) anchor point.
+        this.setInteractive(new Phaser.Geom.Rectangle(-32, -53, 64, 76), Phaser.Geom.Rectangle.Contains);
     }
 
     public playAnimation(key: string) {
