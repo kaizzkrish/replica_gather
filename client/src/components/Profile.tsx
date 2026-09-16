@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useAuth0 } from '@auth0/auth0-react';
 import { Socket } from 'socket.io-client';
 import AvatarCustomizer from './AvatarCustomizer';
@@ -10,12 +10,38 @@ interface ProfileProps {
     onClose: () => void;
 }
 
+interface ProfileFieldProps {
+    label: string;
+    value: string;
+    icon: string;
+    masked?: boolean;
+}
+
+const ProfileField: React.FC<ProfileFieldProps> = ({ label, value, icon, masked }) => (
+    <div className="pc-field">
+        <span className="pc-field-label">{label}</span>
+        <div className="pc-field-row">
+            <span className="pc-field-value">{masked ? '•'.repeat(10) : value}</span>
+            <i className={`ph ${icon} pc-field-icon`} aria-hidden="true"></i>
+        </div>
+    </div>
+);
+
 const Profile: React.FC<ProfileProps> = ({ socket, currUser, onClose }) => {
     const { logout } = useAuth0();
     const [isEditing, setIsEditing] = useState(false);
+    const [showSettings, setShowSettings] = useState(false);
     const [editedName, setEditedName] = useState(currUser?.name || '');
     const [editedPicture, setEditedPicture] = useState(currUser?.picture || '');
     const [showAvatarCustomizer, setShowAvatarCustomizer] = useState(false);
+
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.key === 'Escape') onClose();
+        };
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [onClose]);
 
     if (!currUser) return null;
 
@@ -57,27 +83,69 @@ const Profile: React.FC<ProfileProps> = ({ socket, currUser, onClose }) => {
         }
     };
 
-    return (
-        <div className="profile-overlay" onClick={onClose}>
-            <div className="profile-card" onClick={(e) => e.stopPropagation()}>
-                <div className="profile-header">
-                    <button className="close-btn" onClick={onClose} style={{ padding: '0px' }}>×</button>
-                    <h2>Edit Your Identity</h2>
-                </div>
+    const usernameHandle = currUser.username ? `@${currUser.username}` : (currUser.sub || '—');
 
-                <div className="profile-content">
-                    <div className="profile-avatar-section">
+    return (
+        <div className="pc-overlay" onClick={onClose}>
+            <div
+                className="pc-card"
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="pc-title"
+                onClick={(e) => e.stopPropagation()}
+            >
+                <header className="pc-header">
+                    <h2 id="pc-title" className="pc-title">Your Profile</h2>
+                    <div className="pc-settings-wrap">
+                        <button
+                            type="button"
+                            className="pc-settings-btn"
+                            aria-label="Profile settings"
+                            aria-haspopup="menu"
+                            aria-expanded={showSettings}
+                            onClick={() => setShowSettings((s) => !s)}
+                        >
+                            <i className="ph-bold ph-gear-six" aria-hidden="true"></i>
+                        </button>
+                        {showSettings && (
+                            <div className="pc-settings-menu" role="menu">
+                                <button
+                                    role="menuitem"
+                                    onClick={() => { setIsEditing(true); setShowSettings(false); }}
+                                >
+                                    Edit Name / Photo
+                                </button>
+                                <button
+                                    role="menuitem"
+                                    onClick={() => { setShowAvatarCustomizer(true); setShowSettings(false); }}
+                                >
+                                    Customize Look
+                                </button>
+                                <button
+                                    role="menuitem"
+                                    className="pc-settings-danger"
+                                    onClick={() => logout({ logoutParams: { returnTo: window.location.origin } })}
+                                >
+                                    Sign Out
+                                </button>
+                            </div>
+                        )}
+                    </div>
+                </header>
+
+                <div className="pc-content">
+                    <div className="pc-avatar-ring">
                         <img
-                            src={editedPicture || 'https://via.placeholder.com/150'}
-                            alt={currUser.name}
-                            className="profile-picture"
+                            src={editedPicture || '/profile_icon.jpeg'}
+                            alt={`${editedName || 'User'}'s avatar`}
+                            className="pc-avatar"
                             onError={(e) => {
-                                (e.target as HTMLImageElement).src = 'https://via.placeholder.com/150';
+                                (e.target as HTMLImageElement).src = '/profile_icon.jpeg';
                             }}
                         />
                         {isEditing && (
-                            <label className="avatar-edit-overlay clickable">
-                                <span>Change Photo</span>
+                            <label className="pc-avatar-edit clickable">
+                                <span>Change</span>
                                 <input
                                     type="file"
                                     accept="image/*"
@@ -88,48 +156,31 @@ const Profile: React.FC<ProfileProps> = ({ socket, currUser, onClose }) => {
                         )}
                     </div>
 
-                    <div className="profile-info">
-                        <div className="info-group">
-                            <label>Display Name</label>
-                            {isEditing ? (
-                                <input
-                                    type="text"
-                                    value={editedName}
-                                    onChange={(e) => setEditedName(e.target.value)}
-                                    className="edit-input"
-                                />
-                            ) : (
-                                <div className="info-value">{editedName}</div>
-                            )}
-                        </div>
-
-                        <div className="info-group">
-                            <label>Email Address</label>
-                            <div className="info-value email-readonly">{currUser.email}</div>
-                        </div>
-                    </div>
-                </div>
-
-                <div className="profile-actions">
                     {isEditing ? (
-                        <div className="edit-actions">
+                        <input
+                            type="text"
+                            value={editedName}
+                            onChange={(e) => setEditedName(e.target.value)}
+                            className="pc-name-input"
+                            aria-label="Display name"
+                        />
+                    ) : (
+                        <h3 className="pc-name">{editedName || 'Guest'}</h3>
+                    )}
+                    <p className="pc-role">Explorer</p>
+
+                    <div className="pc-fields">
+                        <ProfileField label="Email" value={currUser.email || '—'} icon="ph-envelope-simple" />
+                        <ProfileField label="Username" value={usernameHandle} icon="ph-user" />
+                        <ProfileField label="Password" value="" icon="ph-lock-key" masked />
+                    </div>
+
+                    {isEditing && (
+                        <div className="pc-edit-actions">
                             <button onClick={handleSave} className="save-btn">Save Changes</button>
                             <button onClick={() => setIsEditing(false)} className="cancel-btn">Cancel</button>
                         </div>
-                    ) : (
-                        <button onClick={() => setIsEditing(true)} className="edit-profile-btn">Edit Name / Photo</button>
                     )}
-
-                    <button onClick={() => setShowAvatarCustomizer(true)} className="edit-profile-btn">
-                        Customize Look
-                    </button>
-
-                    <button
-                        onClick={() => logout({ logoutParams: { returnTo: window.location.origin } })}
-                        className="profile-logout-btn"
-                    >
-                        Sign Out
-                    </button>
                 </div>
             </div>
 

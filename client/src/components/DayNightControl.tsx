@@ -3,15 +3,8 @@ import '../styles/day-night-control.css';
 
 export type DayNightMode = 'day' | 'morning' | 'night';
 
-const MODES: { id: DayNightMode; label: string; icon: string }[] = [
-    { id: 'day', label: 'Day', icon: 'ph-sun' },
-    { id: 'morning', label: 'Morning', icon: 'ph-sun-horizon' },
-    { id: 'night', label: 'Night', icon: 'ph-moon-stars' },
-];
-
-// Mirrors ZoomControl's pattern: a plain UI toggle that dispatches a
-// window CustomEvent for GameScene to react to (GameScene owns the actual
-// lighting effect — this component only tracks which mode is selected).
+// Morning is temporarily off the UI (kept in the type/event contract so it
+// can be reinstated later) — the control is a simple Day/Night switch.
 const DayNightControl: React.FC = () => {
     const [mode, setMode] = useState<DayNightMode>('day');
 
@@ -20,19 +13,20 @@ const DayNightControl: React.FC = () => {
         window.dispatchEvent(new CustomEvent('day-night-mode', { detail: { mode: next } }));
     };
 
+    const isNight = mode === 'night';
+
     return (
         <div className="day-night-control">
-            {MODES.map((m) => (
-                <button
-                    key={m.id}
-                    className={`day-night-btn ${mode === m.id ? 'active' : ''}`}
-                    onClick={() => applyMode(m.id)}
-                    title={m.label}
-                >
-                    <i className={`ph-bold ${m.icon}`}></i>
-                    <span>{m.label}</span>
-                </button>
-            ))}
+            <div className="dn-switch">
+                <input
+                    id="day-night-toggle"
+                    type="checkbox"
+                    checked={isNight}
+                    onChange={(e) => applyMode(e.target.checked ? 'night' : 'day')}
+                    aria-label={isNight ? 'Switch to day' : 'Switch to night'}
+                />
+                <label htmlFor="day-night-toggle" title={isNight ? 'Night' : 'Day'} />
+            </div>
         </div>
     );
 };

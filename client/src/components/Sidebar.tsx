@@ -56,7 +56,8 @@ const Sidebar: React.FC<SidebarProps> = ({
       </nav>
 
       <div className="sidebar-footer">
-        <div className="sidebar-user" onClick={onProfileClick}>
+        <div className="sidebar-user user-btn" onClick={onProfileClick}>
+          <div className="item-kitty"></div>
           <img
             src={(user?.picture && user.picture !== DEFAULT_PICTURE) ? user.picture : '/profile_icon.jpeg'}
             alt={user?.name || 'Guest'}

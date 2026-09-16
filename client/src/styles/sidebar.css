@@ -112,6 +112,7 @@
 .music-btn .item-kitty { background-image: url('/kitties/Music.png'); }
 .settings-btn .item-kitty { background-image: url('/kitties/Settings.png'); }
 .logout-btn .item-kitty { background-image: url('/kitties/logout_kitty.png'); }
+.user-btn .item-kitty { background-image: url('/profile_card_banner.png'); }
 
 .connect-btn .item-kitty { background-color: rgba(248, 225, 238, 0.5); }
 .chat-btn .item-kitty { background-color: rgba(226, 232, 249, 0.5); }
@@ -119,6 +120,7 @@
 .settings-btn .item-kitty { background-color: rgba(232, 245, 233, 0.5); }
 .logout-btn .item-kitty { background-color: rgba(255, 235, 238, 0.5); }
 .toggle-btn .item-kitty { background-color: rgba(243, 229, 245, 0.5); }
+.user-btn .item-kitty { background-color: rgba(217, 199, 245, 0.5); }
 
 .sidebar-item {
     position: relative;
@@ -148,8 +150,9 @@
 }
 
 .sidebar-item span {
-    font-size: 1rem;
-    font-weight: 600;
+    font-family: 'Amatic SC', cursive;
+    font-size: 1.3rem;
+    font-weight: 700;
     opacity: 0;
     transform: translateX(-10px);
     transition: all 0.3s ease;
@@ -188,19 +191,17 @@
 
 /* User Profile Section in Sidebar */
 .sidebar-user {
+    position: relative;
     display: flex;
     align-items: center;
     width: 100%;
-    padding: 12px;
-    /* margin-bottom: 20px; */
-    gap: 16px;
+    height: 56px;
+    padding: 10px;
+    margin-bottom: 12px;
+    gap: 20px;
     cursor: pointer;
-    border-radius: 16px;
-    transition: background 0.2s ease;
-}
-
-.sidebar-user:hover {
-    background: rgba(255, 255, 255, 0.3);
+    border-radius: 24px;
+    overflow: hidden; /* Contain the kitty */
 }
 
 .sidebar-user-avatar {
@@ -225,7 +226,8 @@
 }
 
 .sidebar-user-name {
-    font-size: 0.9rem;
+    font-family: 'Amatic SC', cursive;
+    font-size: 1.3rem;
     font-weight: 700;
     white-space: nowrap;
     text-overflow: ellipsis;
@@ -233,7 +235,10 @@
 }
 
 .sidebar-user-status {
-    font-size: 0.75rem;
-    color: #888;
+    display: none;
+    font-family: 'Amatic SC', cursive;
+    font-size: 1rem;
+    font-weight: 700;
+    color: #66e82e;
     white-space: nowrap;
 }

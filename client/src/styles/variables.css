@@ -22,4 +22,15 @@
     --wa-text: #3e2723;
     --wa-text-muted: #6d4c41;
     --wa-sidebar: #f5f5dc;
+
+    /* Profile card design tokens */
+    --profile-purple-1: #8B4DE8;
+    --profile-purple-2: #9B63E8;
+    --profile-bg-lavender: #E8DDFB;
+    --profile-avatar-ring: #D9C7F5;
+    --profile-field-bg: #F5F5F7;
+    --profile-text-primary: #202020;
+    --profile-text-secondary: #666666;
+    --profile-radius-card: 30px;
+    --profile-radius-field: 14px;
 }
