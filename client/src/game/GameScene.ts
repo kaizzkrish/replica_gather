@@ -74,6 +74,97 @@ export default class GameScene extends Phaser.Scene {
         if (typeof zoom === 'number') this.setZoom(zoom);
     };
 
+    // --- Day / Night cycle -------------------------------------------------
+    //
+    // 'night': the whole viewport is darkened except a soft circular patch
+    // around the player (~2 "tiles" — this world has no tile grid, so a
+    // tile is treated as one character-width, TILE below) that follows them
+    // as they move, like a torch. Implemented with the standard Phaser
+    // RenderTexture "fog of war" technique: a screen-locked RenderTexture is
+    // filled solid dark every frame, then a soft radial-gradient brush is
+    // stamped out of it (blend mode ERASE) at the player's current SCREEN
+    // position — recomputed each frame from world position + camera
+    // scroll/zoom, since the overlay itself stays screen-locked
+    // (scrollFactor 0) rather than panning/zooming with the world.
+    // 'morning': a light warm-color wash over the whole scene, no darkening.
+    // 'day' (default): no overlay at all.
+    private dayNightMode: 'day' | 'morning' | 'night' = 'day';
+    private nightOverlay?: Phaser.GameObjects.RenderTexture;
+    private lightBrush?: Phaser.GameObjects.Image; // punches the dark overlay fully transparent (reveals true scene brightness)
+    private morningTint?: Phaser.GameObjects.Rectangle;
+    private static readonly TILE = 64; // matches Character.BODY_SIZE — the closest thing this free-roam world has to a tile unit
+    private static readonly NIGHT_LIGHT_DIAMETER = GameScene.TILE * 4; // ~2 tiles' radius of visibility around the player
+    // The Character container's own (x,y) anchor sits near the feet/shadow
+    // (see Character.BODY_Y), not the sprite's visual center — shift the
+    // light up so it's centered on the character instead of favoring the
+    // legs and leaving the head/torso in the gradient's dimmer fringe.
+    private static readonly NIGHT_LIGHT_Y_OFFSET = 20;
+
+    private createRadialTexture(key: string, size: number, stops: { offset: number; color: string }[]) {
+        if (this.textures.exists(key)) return;
+        const canvasTexture = this.textures.createCanvas(key, size, size);
+        if (!canvasTexture) return;
+        const ctx = canvasTexture.getContext();
+        const c = size / 2;
+        const gradient = ctx.createRadialGradient(c, c, 0, c, c, c);
+        stops.forEach((s) => gradient.addColorStop(s.offset, s.color));
+        ctx.fillStyle = gradient;
+        ctx.fillRect(0, 0, size, size);
+        canvasTexture.refresh();
+    }
+
+    private createNightLightTextures() {
+        const size = GameScene.NIGHT_LIGHT_DIAMETER;
+        this.createRadialTexture('nightLightMask', size, [
+            { offset: 0, color: 'rgba(255,255,255,1)' },
+            { offset: 0.55, color: 'rgba(255,255,255,1)' },
+            { offset: 1, color: 'rgba(255,255,255,0)' },
+        ]);
+    }
+
+    private handleDayNightEvent = (e: Event) => {
+        const mode = (e as CustomEvent<{ mode: 'day' | 'morning' | 'night' }>).detail?.mode;
+        if (!mode) return;
+        this.dayNightMode = mode;
+        this.morningTint?.setVisible(mode === 'morning');
+        this.nightOverlay?.setVisible(mode === 'night');
+        if (mode !== 'night') this.nightOverlay?.clear();
+    };
+
+    // Re-fills and re-punches the night overlay for the current frame —
+    // called from update() only while in night mode and once the player
+    // exists. Cheap: one clear, one fill, one erase, one draw call per frame.
+    private updateNightOverlay() {
+        if (!this.nightOverlay || !this.lightBrush || !this.player) return;
+        const cam = this.cameras.main;
+        // World-to-screen projection: naively doing `(worldX - scrollX) *
+        // zoom` looked right in isolated testing but was actually wrong in
+        // this scene — verified with a throwaway harness that scrollX here
+        // is not what that formula assumes (this project's baseline-zoom
+        // compensation, camera-follow lerp, and bounds clamping all feed
+        // into it), which showed up as the light rendering well away from
+        // the character. Feeding the world point through the camera's own
+        // transform matrix (the exact same one Phaser uses to place every
+        // other sprite) sidesteps needing to re-derive that formula and is
+        // correct regardless of zoom/bounds/origin quirks.
+        // `matrix` exists at runtime (Phaser.Cameras.Scene2D.Camera extends
+        // BaseCamera, which owns it) but isn't in Phaser's own .d.ts, hence the cast.
+        const camMatrix = (cam as unknown as { matrix: Phaser.GameObjects.Components.TransformMatrix }).matrix;
+        const point = camMatrix.transformPoint(
+            this.player.x - cam.scrollX,
+            this.player.y - GameScene.NIGHT_LIGHT_Y_OFFSET - cam.scrollY
+        );
+        const screenX = point.x;
+        const screenY = point.y;
+        const lightSize = GameScene.NIGHT_LIGHT_DIAMETER * cam.zoom;
+
+        this.lightBrush.setDisplaySize(lightSize, lightSize);
+
+        this.nightOverlay.clear();
+        this.nightOverlay.fill(0x05060c, 0.88);
+        this.nightOverlay.erase(this.lightBrush, screenX, screenY);
+    }
+
     constructor() {
         super('GameScene');
     }
@@ -193,6 +284,24 @@ export default class GameScene extends Phaser.Scene {
         this.setZoom(1);
         window.addEventListener('game-zoom', this.handleZoomEvent);
 
+        // 🌗 Day / Night Control — overlays are screen-locked (scrollFactor 0)
+        // and sized to the current viewport; depth 9000 keeps them above the
+        // background/furniture/characters but below the interact hint (10000)
+        // and room bar (10001-10002) so UI text stays fully legible.
+        this.createNightLightTextures();
+        this.nightOverlay = this.add.renderTexture(0, 0, this.scale.width, this.scale.height)
+            .setOrigin(0, 0)
+            .setScrollFactor(0)
+            .setDepth(9000)
+            .setVisible(false);
+        this.lightBrush = this.add.image(0, 0, 'nightLightMask').setVisible(false);
+        this.morningTint = this.add.rectangle(0, 0, this.scale.width, this.scale.height, 0xffb066, 0.16)
+            .setOrigin(0, 0)
+            .setScrollFactor(0)
+            .setDepth(9000)
+            .setVisible(false);
+        window.addEventListener('day-night-mode', this.handleDayNightEvent);
+
         const canvas = this.sys.game.canvas;
 
         // Mouse scroll wheel + trackpad two-finger pinch (browsers report pinch
@@ -272,6 +381,7 @@ export default class GameScene extends Phaser.Scene {
 
         this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
             window.removeEventListener('game-zoom', this.handleZoomEvent);
+            window.removeEventListener('day-night-mode', this.handleDayNightEvent);
             canvas.removeEventListener('wheel', wheelHandler);
             canvas.removeEventListener('mousedown', mouseDownHandler);
             window.removeEventListener('mousemove', mouseMoveHandler);
@@ -371,6 +481,8 @@ export default class GameScene extends Phaser.Scene {
             // as characters cross paths.
             this.player.setDepth(this.player.y);
             this.otherPlayers.forEach(char => char.setDepth(char.y));
+
+            if (this.dayNightMode === 'night') this.updateNightOverlay();
 
             // 1. Room Detection
             const currentRoom = this.rooms.find(r =>

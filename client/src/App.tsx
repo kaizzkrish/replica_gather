@@ -7,6 +7,7 @@ import Auth from './components/Auth';
 import Profile from './components/Profile';
 import Sidebar from './components/Sidebar';
 import ZoomControl from './components/ZoomControl';
+import DayNightControl from './components/DayNightControl';
 import { SOCKET_URL } from './config/env';
 import { defaultCustomization } from './game/lpcCatalog';
 import './styles/index.css';
@@ -118,6 +119,7 @@ function App() {
 
             <Chat socket={socket} user={currUser || user} />
             <ZoomControl />
+            <DayNightControl />
           </div>
         </>
       )}
