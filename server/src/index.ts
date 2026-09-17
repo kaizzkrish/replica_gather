@@ -157,12 +157,77 @@ interface Player {
 // In-memory store for active connections
 const activePlayers: Record<string, Player> = {};
 
+interface Pet {
+    id: string;
+    ownerUserId: string;
+    nickname: string;
+    breedId: string;
+    growthStage: 'baby' | 'juvenile' | 'adult';
+    hunger: number;
+    energy: number;
+    bond: number;
+    mode: 'idle' | 'following' | 'sleeping';
+    room: string;
+    x?: number;
+    y?: number;
+}
+
+const GROWTH_THRESHOLDS: Record<Pet['growthStage'], number> = { baby: 50, juvenile: 150, adult: Infinity };
+const nextGrowthStage = (stage: Pet['growthStage']): Pet['growthStage'] =>
+    stage === 'baby' ? 'juvenile' : stage === 'juvenile' ? 'adult' : 'adult';
+
+// Keyed by owner userId (one pet per user) rather than socket id — unlike
+// activePlayers, a pet's state should persist across its owner's
+// reconnects/disconnects instead of disappearing with the socket.
+const activePets: Record<string, Pet> = {};
+
+const rowToPet = (row: any): Pet => ({
+    id: row.id,
+    ownerUserId: row.owner_user_id,
+    nickname: row.nickname,
+    breedId: row.breed_id,
+    growthStage: row.growth_stage,
+    hunger: row.hunger,
+    energy: row.energy,
+    bond: row.bond,
+    mode: row.mode,
+    room: row.room,
+});
+
 const PORT = process.env.PORT || 3001;
+
+// Decays hunger/energy over time and grows bond while well-fed, same idea
+// as a Tamagotchi tick — runs regardless of whether the owner is currently
+// connected, since activePets persists across disconnects.
+const PET_TICK_MS = 60_000;
+const startPetTick = () => {
+    setInterval(async () => {
+        for (const pet of Object.values(activePets)) {
+            pet.hunger = Math.max(0, pet.hunger - 2);
+            pet.energy = pet.mode === 'sleeping'
+                ? Math.min(100, pet.energy + 10)
+                : Math.max(0, pet.energy - 2);
+            if (pet.hunger > 50) {
+                pet.bond = Math.min(GROWTH_THRESHOLDS.adult, pet.bond + 1);
+                if (pet.bond >= GROWTH_THRESHOLDS[pet.growthStage]) pet.growthStage = nextGrowthStage(pet.growthStage);
+            }
+
+            try {
+                await pool.query(
+                    `UPDATE replica_pets SET hunger = $1, energy = $2, bond = $3, growth_stage = $4, updated_at = NOW() WHERE id = $5`,
+                    [pet.hunger, pet.energy, pet.bond, pet.growthStage, pet.id]
+                );
+                io.to(pet.room).emit('pet:updated', pet);
+            } catch (err) { console.error('Pet Tick Error:', err); }
+        }
+    }, PET_TICK_MS);
+};
 
 // Initialize Database and Start Server
 const startServer = async () => {
     try {
         await initDb();
+        startPetTick();
 
         server.listen(PORT, () => {
             console.log(`Server listening on port ${PORT}`);
@@ -289,6 +354,24 @@ io.on('connection', (socket) => {
                 socket.emit('homeNameUpdated', { name: settingsRes.rows[0].home_name });
             }
         } catch (err) { console.error('Fetch Space Settings Error:', err); }
+
+        // Load this user's pet (if any) into the in-memory store, then sync
+        // every pet currently known for this room to the joining socket —
+        // mirrors the currentPlayers/newPlayer pattern above.
+        try {
+            if (!activePets[userId]) {
+                const petRes = await pool.query(`SELECT * FROM replica_pets WHERE owner_user_id = $1`, [userId]);
+                if (petRes.rows[0]) activePets[userId] = rowToPet(petRes.rows[0]);
+            }
+            const ownPet = activePets[userId];
+            if (ownPet) ownPet.room = room;
+
+            const roomPets: Record<string, Pet> = {};
+            Object.values(activePets).forEach((pet) => {
+                if (pet.room === room) roomPets[pet.ownerUserId] = pet;
+            });
+            socket.emit('pet:currentPets', roomPets);
+        } catch (err) { console.error('Fetch Pet Error:', err); }
     });
 
     socket.on('requestChatHistory', async () => {
@@ -362,6 +445,100 @@ io.on('connection', (socket) => {
                 io.to(player.room).emit('profileUpdated', player);
             } catch (err) { console.error('Update Profile Error:', err); }
         }
+    });
+
+    socket.on('pet:adopt', async (data: { nickname: string, breedId: string }) => {
+        const player = activePlayers[socket.id];
+        if (!player || !data?.nickname || !data?.breedId) return;
+        if (activePets[player.userId]) return; // one pet per user
+
+        const pet: Pet = {
+            id: `pet-${Date.now()}`,
+            ownerUserId: player.userId,
+            nickname: data.nickname.slice(0, 100),
+            breedId: data.breedId,
+            growthStage: 'baby',
+            hunger: 100,
+            energy: 100,
+            bond: 0,
+            mode: 'idle',
+            room: player.room,
+        };
+
+        try {
+            await pool.query(
+                `INSERT INTO replica_pets (id, owner_user_id, nickname, breed_id, growth_stage, hunger, energy, bond, mode, room)
+                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+                [pet.id, pet.ownerUserId, pet.nickname, pet.breedId, pet.growthStage, pet.hunger, pet.energy, pet.bond, pet.mode, pet.room]
+            );
+            activePets[player.userId] = pet;
+            io.to(pet.room).emit('pet:adopted', pet);
+        } catch (err) { console.error('Adopt Pet Error:', err); }
+    });
+
+    socket.on('pet:remove', async () => {
+        const player = activePlayers[socket.id];
+        const pet = player && activePets[player.userId];
+        if (!pet) return;
+
+        try {
+            await pool.query(`DELETE FROM replica_pets WHERE id = $1`, [pet.id]);
+            delete activePets[pet.ownerUserId];
+            io.to(pet.room).emit('pet:removed', { ownerUserId: pet.ownerUserId });
+        } catch (err) { console.error('Remove Pet Error:', err); }
+    });
+
+    socket.on('pet:feed', async () => {
+        const player = activePlayers[socket.id];
+        const pet = player && activePets[player.userId];
+        if (!pet) return;
+
+        pet.hunger = Math.min(100, pet.hunger + 25);
+        pet.bond = Math.min(GROWTH_THRESHOLDS.adult, pet.bond + 5);
+        if (pet.bond >= GROWTH_THRESHOLDS[pet.growthStage]) pet.growthStage = nextGrowthStage(pet.growthStage);
+
+        try {
+            await pool.query(
+                `UPDATE replica_pets SET hunger = $1, bond = $2, growth_stage = $3, updated_at = NOW() WHERE id = $4`,
+                [pet.hunger, pet.bond, pet.growthStage, pet.id]
+            );
+            io.to(pet.room).emit('pet:updated', pet);
+        } catch (err) { console.error('Feed Pet Error:', err); }
+    });
+
+    socket.on('pet:setMode', async (data: { mode: Pet['mode'] }) => {
+        const player = activePlayers[socket.id];
+        const pet = player && activePets[player.userId];
+        if (!pet || !data?.mode) return;
+
+        pet.mode = data.mode;
+        try {
+            await pool.query(`UPDATE replica_pets SET mode = $1, updated_at = NOW() WHERE id = $2`, [pet.mode, pet.id]);
+            io.to(pet.room).emit('pet:updated', pet);
+        } catch (err) { console.error('Set Pet Mode Error:', err); }
+    });
+
+    socket.on('pet:rename', async (data: { nickname: string }) => {
+        const player = activePlayers[socket.id];
+        const pet = player && activePets[player.userId];
+        if (!pet || !data?.nickname) return;
+
+        pet.nickname = data.nickname.slice(0, 100);
+        try {
+            await pool.query(`UPDATE replica_pets SET nickname = $1, updated_at = NOW() WHERE id = $2`, [pet.nickname, pet.id]);
+            io.to(pet.room).emit('pet:updated', pet);
+        } catch (err) { console.error('Rename Pet Error:', err); }
+    });
+
+    // Following-pet position, throttled client-side the same way playerMovement is.
+    socket.on('pet:move', (data: { x: number, y: number, direction?: string }) => {
+        const player = activePlayers[socket.id];
+        const pet = player && activePets[player.userId];
+        if (!pet || !data) return;
+
+        pet.x = data.x;
+        pet.y = data.y;
+        socket.to(pet.room).emit('pet:moved', { ownerUserId: pet.ownerUserId, x: data.x, y: data.y, direction: data.direction });
     });
 
     socket.on('updateHomeName', async (data: { name: string, room?: string }) => {

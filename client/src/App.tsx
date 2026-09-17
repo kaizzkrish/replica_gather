@@ -10,6 +10,8 @@ import ZoomControl from './components/ZoomControl';
 import DayNightControl from './components/DayNightControl';
 import CharacterContextMenu from './components/CharacterContextMenu';
 import AvatarCustomizer from './components/AvatarCustomizer';
+import PetPanel from './components/PetPanel';
+import PetContextMenu from './components/PetContextMenu';
 import { SOCKET_URL } from './config/env';
 import { defaultCustomization } from './game/lpcCatalog';
 import type { Customization } from './game/lpcCatalog';
@@ -38,6 +40,7 @@ function App() {
   const [socket, setSocket] = useState<Socket | null>(null);
   const [showProfile, setShowProfile] = useState(false);
   const [showAvatarCustomizer, setShowAvatarCustomizer] = useState(false);
+  const [showPetPanel, setShowPetPanel] = useState(false);
   const [activeSidebarItem, setActiveSidebarItem] = useState('connect');
 
   useEffect(() => {
@@ -84,9 +87,13 @@ function App() {
     };
     window.addEventListener('open-youtube' as any, handleOpenYouTube);
 
+    const handlePetHouseInteract = () => setShowPetPanel(true);
+    window.addEventListener('pet-house-interact' as any, handlePetHouseInteract);
+
     return () => {
       newSocket.disconnect();
       window.removeEventListener('open-youtube' as any, handleOpenYouTube);
+      window.removeEventListener('pet-house-interact' as any, handlePetHouseInteract);
     };
   }, [isAuthenticated, user]);
 
@@ -101,6 +108,7 @@ function App() {
       ) : (
         <>
           {showProfile && <Profile socket={socket} currUser={currUser} onClose={() => setShowProfile(false)} />}
+          {showPetPanel && <PetPanel currUser={currUser || user} onClose={() => setShowPetPanel(false)} />}
           {showAvatarCustomizer && (
             <AvatarCustomizer
               socket={socket}
@@ -118,6 +126,7 @@ function App() {
           )}
           <Game socket={socket} user={currUser || user} />
           <CharacterContextMenu onCustomize={() => setShowAvatarCustomizer(true)} />
+          <PetContextMenu currUser={currUser || user} />
 
           <div className="ui-overlay">
             <Sidebar
@@ -133,6 +142,9 @@ function App() {
                 }
                 if (item === 'settings') {
                   setShowProfile(true);
+                }
+                if (item === 'pet') {
+                  setShowPetPanel(true);
                 }
               }}
             />

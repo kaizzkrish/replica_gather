@@ -48,6 +48,20 @@ export const initDb = async () => {
         `ALTER TABLE replica_users ADD COLUMN IF NOT EXISTS is_superuser BOOLEAN DEFAULT false;`,
         `ALTER TABLE replica_users ADD COLUMN IF NOT EXISTS reset_code VARCHAR(10);`,
         `ALTER TABLE replica_users ADD COLUMN IF NOT EXISTS reset_expires TIMESTAMP;`,
+        `CREATE TABLE IF NOT EXISTS replica_pets (
+            id VARCHAR(255) PRIMARY KEY,
+            owner_user_id VARCHAR(255) UNIQUE REFERENCES replica_users(id) ON DELETE CASCADE,
+            nickname VARCHAR(100) NOT NULL,
+            breed_id VARCHAR(50) NOT NULL,
+            growth_stage VARCHAR(20) DEFAULT 'baby',
+            hunger INTEGER DEFAULT 100,
+            energy INTEGER DEFAULT 100,
+            bond INTEGER DEFAULT 0,
+            mode VARCHAR(20) DEFAULT 'idle',
+            room VARCHAR(50) DEFAULT 'main-space',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );`,
         `INSERT INTO replica_users (id, username, password, is_superuser, name, email)
          VALUES ('local-superuser-sanchali', 'Sanchali', '$2a$10$xbwPiH0D5I5xdS7bGMzZZeK86cL42AnjWgrdChojkIRrpzadWtRW2', true, 'Sanchali', 'sanchali@localhost')
          ON CONFLICT (username) DO UPDATE SET

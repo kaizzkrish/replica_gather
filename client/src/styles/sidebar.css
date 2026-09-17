@@ -117,6 +117,7 @@
 .connect-btn .item-kitty { background-color: rgba(248, 225, 238, 0.5); }
 .chat-btn .item-kitty { background-color: rgba(226, 232, 249, 0.5); }
 .music-btn .item-kitty { background-color: rgba(253, 242, 217, 0.5); }
+.pet-btn .item-kitty { background-color: rgba(255, 224, 189, 0.5); }
 .settings-btn .item-kitty { background-color: rgba(232, 245, 233, 0.5); }
 .logout-btn .item-kitty { background-color: rgba(255, 235, 238, 0.5); }
 .toggle-btn .item-kitty { background-color: rgba(243, 229, 245, 0.5); }

@@ -24,6 +24,7 @@ const Sidebar: React.FC<SidebarProps> = ({
     { id: 'connect', label: 'Connect', icon: 'ph-plugs' },
     { id: 'chat', label: 'Chat', icon: 'ph-chat-circle' },
     { id: 'music', label: 'Music', icon: 'ph-music-notes' },
+    { id: 'pet', label: 'Pet', icon: 'ph-paw-print' },
     { id: 'settings', label: 'Settings', icon: 'ph-gear' },
   ];
 

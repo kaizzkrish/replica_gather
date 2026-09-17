@@ -3,12 +3,42 @@ import { Socket } from 'socket.io-client';
 import { Character } from './Character';
 import { BASE_WIDTH, BASE_HEIGHT } from './GameConfig';
 import { defaultCustomization } from './lpcCatalog';
+import { Pet } from './Pet';
+import type { PetDirection, PetGrowthStage } from './petCatalog';
 
 const DEFAULT_CUSTOMIZATION = defaultCustomization();
+
+interface PetState {
+    id: string;
+    ownerUserId: string;
+    nickname: string;
+    breedId: string;
+    growthStage: PetGrowthStage;
+    hunger: number;
+    energy: number;
+    bond: number;
+    mode: 'idle' | 'following' | 'sleeping';
+    room: string;
+    x?: number;
+    y?: number;
+}
 
 export default class GameScene extends Phaser.Scene {
     private player?: Character;
     private otherPlayers: Map<string, Character> = new Map();
+    private myPet?: Pet;
+    private myPetState?: PetState;
+    private otherPets: Map<string, Pet> = new Map(); // keyed by ownerUserId
+    private petHouse?: Phaser.GameObjects.Container;
+    private petHouseHint?: Phaser.GameObjects.Container;
+    private petVelocityX = 0;
+    private petVelocityY = 0;
+    private petLastFacing: PetDirection = 'left';
+    private petLastEmitTime = 0;
+    private static readonly PET_HOUSE_X = 150;
+    private static readonly PET_HOUSE_Y = 470;
+    private static readonly PET_FOLLOW_DISTANCE = 45;
+    private static readonly PET_SPEED = 160;
     private socket?: Socket;
     private userData?: any;
     private cursors?: Phaser.Types.Input.Keyboard.CursorKeys;
@@ -72,6 +102,17 @@ export default class GameScene extends Phaser.Scene {
     private handleZoomEvent = (e: Event) => {
         const zoom = (e as CustomEvent<{ zoom: number }>).detail?.zoom;
         if (typeof zoom === 'number') this.setZoom(zoom);
+    };
+
+    private handlePetCommand = (e: CustomEvent<{ action: string, nickname?: string, breedId?: string }>) => {
+        const { action, nickname, breedId } = e.detail || ({} as any);
+        if (action === 'adopt') this.socket?.emit('pet:adopt', { nickname, breedId });
+        else if (action === 'feed') this.socket?.emit('pet:feed');
+        else if (action === 'rename') this.socket?.emit('pet:rename', { nickname });
+        else if (action === 'follow') this.socket?.emit('pet:setMode', { mode: 'following' });
+        else if (action === 'sleep') this.socket?.emit('pet:setMode', { mode: 'sleeping' });
+        else if (action === 'idle') this.socket?.emit('pet:setMode', { mode: 'idle' });
+        else if (action === 'remove') this.socket?.emit('pet:remove');
     };
 
     // --- Day / Night cycle -------------------------------------------------
@@ -179,6 +220,7 @@ export default class GameScene extends Phaser.Scene {
         this.load.image('furniture_office', '/furniture_office.png');
         this.load.image('furniture_gaming', '/furniture_gaming.png');
         this.load.image('furniture_home', '/furniture_home.png');
+        this.load.image('pet_house', '/pet-assets/dog_house_red.png');
 
         // Character layers are LPC spritesheets loaded on demand per-layer
         // by lpcLoader.ts (see Character.ts) — not preloaded here, since the
@@ -268,6 +310,39 @@ export default class GameScene extends Phaser.Scene {
             fontStyle: '600'
         }).setOrigin(0.5);
         this.interactHint.add([hintBg, hintText]);
+
+        // 🐾 Pet House — a fixed marker in the Garden Pathway; the owner's
+        // pet rests here by default and "sleeps" here when sent to sleep.
+        // Art: Revouger's "Top-Down Pet Props" (see client/CREDITS.md).
+        const { PET_HOUSE_X, PET_HOUSE_Y } = GameScene;
+        this.petHouse = this.add.container(PET_HOUSE_X, PET_HOUSE_Y).setDepth(PET_HOUSE_Y);
+        this.textures.get('pet_house').setFilter(Phaser.Textures.FilterMode.NEAREST);
+        const houseShadow = this.add.ellipse(0, 26, 46, 14, 0x000000, 0.3);
+        const houseSprite = this.add.image(0, 0, 'pet_house');
+        houseSprite.setDisplaySize(72, 72);
+        this.petHouse.add([houseShadow, houseSprite]);
+
+        this.petHouseHint = this.add.container(PET_HOUSE_X, PET_HOUSE_Y - 60).setAlpha(0).setDepth(10000);
+        const petHintBg = this.add.graphics();
+        petHintBg.fillStyle(0xffffff, 0.2);
+        petHintBg.fillRoundedRect(-55, -15, 110, 30, 15);
+        petHintBg.lineStyle(1, 0xffffff, 0.5);
+        petHintBg.strokeRoundedRect(-55, -15, 110, 30, 15);
+        const petHintText = this.add.text(0, 0, '[F] PET HOUSE', {
+            fontSize: '10px',
+            fontFamily: 'Inter, sans-serif',
+            color: '#ffffff',
+            fontStyle: '600'
+        }).setOrigin(0.5);
+        this.petHouseHint.add([petHintBg, petHintText]);
+
+        this.input.keyboard?.on('keydown-F', () => {
+            if (this.petHouseHint?.alpha === 1) {
+                window.dispatchEvent(new CustomEvent('pet-house-interact', {
+                    detail: { hasPet: !!this.myPetState }
+                }));
+            }
+        });
 
         // UI Setup: Top Bar
         this.roomBar = this.add.graphics().setScrollFactor(0).setDepth(10001);
@@ -385,6 +460,7 @@ export default class GameScene extends Phaser.Scene {
         this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
             window.removeEventListener('game-zoom', this.handleZoomEvent);
             window.removeEventListener('day-night-mode', this.handleDayNightEvent);
+            window.removeEventListener('pet-command', this.handlePetCommand as EventListener);
             canvas.removeEventListener('wheel', wheelHandler);
             canvas.removeEventListener('mousedown', mouseDownHandler);
             window.removeEventListener('mousemove', mouseMoveHandler);
@@ -456,6 +532,49 @@ export default class GameScene extends Phaser.Scene {
             }
         });
 
+        // 🐾 Pet Sync
+        const myUserId = this.userData?.sub;
+        this.socket.on('pet:currentPets', (pets: Record<string, PetState>) => {
+            Object.values(pets).forEach((pet) => this.upsertPet(pet));
+        });
+        this.socket.on('pet:adopted', (pet: PetState) => this.upsertPet(pet));
+        this.socket.on('pet:updated', (pet: PetState) => this.upsertPet(pet));
+        this.socket.on('pet:moved', (data: { ownerUserId: string, x: number, y: number, direction?: PetDirection }) => {
+            if (data.ownerUserId === myUserId) return;
+            const pet = this.otherPets.get(data.ownerUserId);
+            if (!pet) return;
+            this.tweens.add({ targets: pet, x: data.x, y: data.y, duration: 150, ease: 'Linear' });
+            if (data.direction) pet.playAnimation(data.direction);
+            else pet.stopAnimation();
+        });
+        this.socket.on('pet:removed', (data: { ownerUserId: string }) => {
+            window.dispatchEvent(new CustomEvent('pet-removed', { detail: data }));
+            if (data.ownerUserId === myUserId) {
+                this.myPet?.destroy();
+                this.myPet = undefined;
+                this.myPetState = undefined;
+            } else {
+                this.otherPets.get(data.ownerUserId)?.destroy();
+                this.otherPets.delete(data.ownerUserId);
+            }
+        });
+
+        // React UI (PetPanel) -> game actions
+        window.addEventListener('pet-command', this.handlePetCommand as EventListener);
+
+        // PetPanel/PetContextMenu mount long after the initial pet sync (the
+        // user has to click to open them) and would otherwise miss the
+        // one-shot 'pet-state'/'pet-removed' broadcasts fired back on join —
+        // this lets them ask for the current state on mount instead of
+        // depending on catching a past event.
+        window.addEventListener('pet-request-state', () => {
+            if (this.myPetState) {
+                window.dispatchEvent(new CustomEvent('pet-state', { detail: this.myPetState }));
+            } else if (myUserId) {
+                window.dispatchEvent(new CustomEvent('pet-removed', { detail: { ownerUserId: myUserId } }));
+            }
+        });
+
         const joinRoom = () => {
             this.socket?.emit('joinRoom', {
                 room: 'main-space',
@@ -467,6 +586,42 @@ export default class GameScene extends Phaser.Scene {
         if (this.socket.connected) joinRoom();
         this.socket.on('connect', joinRoom);
         this.cursors = this.input.keyboard?.createCursorKeys();
+    }
+
+    private upsertPet(pet: PetState) {
+        const myUserId = this.userData?.sub;
+        window.dispatchEvent(new CustomEvent('pet-state', { detail: pet }));
+
+        if (pet.ownerUserId === myUserId) {
+            this.myPetState = pet;
+            if (!this.myPet) {
+                const { PET_HOUSE_X, PET_HOUSE_Y } = GameScene;
+                this.myPet = new Pet(this, PET_HOUSE_X, PET_HOUSE_Y + 30, pet.nickname, pet.breedId, pet.growthStage, true);
+                this.myPet.setDepth(PET_HOUSE_Y + 30);
+                this.myPet.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
+                    if (!pointer.rightButtonDown()) return;
+                    const evt = pointer.event as MouseEvent;
+                    window.dispatchEvent(new CustomEvent('pet-context-menu', {
+                        detail: { x: evt.clientX, y: evt.clientY }
+                    }));
+                });
+            }
+            this.myPet.updateNickname(pet.nickname);
+            this.myPet.updateGrowthStage(pet.growthStage);
+            this.myPet.updateBreed(pet.breedId);
+            this.myPet.setSleeping(pet.mode === 'sleeping');
+        } else {
+            let otherPet = this.otherPets.get(pet.ownerUserId);
+            if (!otherPet) {
+                const { PET_HOUSE_X, PET_HOUSE_Y } = GameScene;
+                otherPet = new Pet(this, pet.x ?? PET_HOUSE_X, pet.y ?? PET_HOUSE_Y + 30, pet.nickname, pet.breedId, pet.growthStage);
+                this.otherPets.set(pet.ownerUserId, otherPet);
+            }
+            otherPet.updateNickname(pet.nickname);
+            otherPet.updateGrowthStage(pet.growthStage);
+            otherPet.updateBreed(pet.breedId);
+            otherPet.setSleeping(pet.mode === 'sleeping');
+        }
     }
 
     private speed = 180; // Pixels per second
@@ -484,8 +639,18 @@ export default class GameScene extends Phaser.Scene {
             // as characters cross paths.
             this.player.setDepth(this.player.y);
             this.otherPlayers.forEach(char => char.setDepth(char.y));
+            this.myPet?.setDepth(this.myPet.y);
+            this.otherPets.forEach(pet => pet.setDepth(pet.y));
 
             if (this.dayNightMode === 'night') this.updateNightOverlay();
+
+            // Pet House Proximity Hint
+            if (this.petHouse && this.petHouseHint) {
+                const distToHouse = Phaser.Math.Distance.Between(this.player.x, this.player.y, this.petHouse.x, this.petHouse.y);
+                this.petHouseHint.setAlpha(distToHouse < 80 ? 1 : 0);
+            }
+
+            this.updatePetFollow(delta, time);
 
             // 1. Room Detection
             const currentRoom = this.rooms.find(r =>
@@ -597,6 +762,78 @@ export default class GameScene extends Phaser.Scene {
                     }
                 }));
             }
+        }
+    }
+
+    // Same exponential-smoothing seek used for the player's own movement,
+    // but with a "keep distance" leash instead of driving to an exact point
+    // — following stops an arm's length behind the owner rather than
+    // stacking on top of them.
+    private updatePetFollow(delta: number, time: number) {
+        if (!this.myPet || !this.myPetState || !this.player) return;
+        const mode = this.myPetState.mode;
+
+        let targetX: number | null = null;
+        let targetY: number | null = null;
+        let keepDistance = 0;
+
+        if (mode === 'following') {
+            targetX = this.player.x;
+            targetY = this.player.y;
+            keepDistance = GameScene.PET_FOLLOW_DISTANCE;
+        } else if (mode === 'sleeping') {
+            targetX = GameScene.PET_HOUSE_X;
+            targetY = GameScene.PET_HOUSE_Y + 30;
+            keepDistance = 4;
+        }
+
+        if (targetX === null || targetY === null) {
+            this.petVelocityX = 0;
+            this.petVelocityY = 0;
+            this.myPet.stopAnimation();
+            return;
+        }
+
+        const dx = targetX - this.myPet.x;
+        const dy = targetY - this.myPet.y;
+        const distance = Math.hypot(dx, dy);
+
+        if (distance <= keepDistance) {
+            this.petVelocityX = 0;
+            this.petVelocityY = 0;
+            this.myPet.stopAnimation();
+            return;
+        }
+
+        const dirX = dx / distance;
+        const dirY = dy / distance;
+        const smoothing = 1 - Math.exp(-GameScene.ACCEL * (delta / 1000));
+        this.petVelocityX += (dirX * GameScene.PET_SPEED - this.petVelocityX) * smoothing;
+        this.petVelocityY += (dirY * GameScene.PET_SPEED - this.petVelocityY) * smoothing;
+
+        this.myPet.x += this.petVelocityX * (delta / 1000);
+        this.myPet.y += this.petVelocityY * (delta / 1000);
+
+        // 'up' has real back-view art (petCatalog.ts's header), so it gets
+        // its own animation. 'down' has no toward-camera art at all — using
+        // the back view there would show the pet's rear while it's
+        // supposedly approaching, which reads as walking backwards. So
+        // "down" instead keeps showing the side profile, whichever way it
+        // was last actually facing, rather than switching pose.
+        let facing: PetDirection;
+        if (Math.abs(this.petVelocityX) > Math.abs(this.petVelocityY)) {
+            facing = this.petVelocityX > 0 ? 'right' : 'left';
+            this.petLastFacing = facing;
+        } else if (this.petVelocityY < 0) {
+            facing = 'up';
+        } else {
+            facing = this.petLastFacing;
+        }
+        this.myPet.playAnimation(facing);
+
+        if (time - this.petLastEmitTime > 100) {
+            this.petLastEmitTime = time;
+            this.socket?.emit('pet:move', { x: this.myPet.x, y: this.myPet.y, direction: facing });
         }
     }
 
