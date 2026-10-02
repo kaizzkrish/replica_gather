@@ -885,6 +885,21 @@ export default class GameScene extends Phaser.Scene {
         const char = new Character(this, x, y, playerInfo.name, custom);
         char.setDepth(9);
         char.syncAlpha(0.15);
+        char.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
+            if (!pointer.rightButtonDown() || !this.player) return;
+            const evt = pointer.event as MouseEvent;
+            const distance = Phaser.Math.Distance.Between(this.player.x, this.player.y, char.x, char.y);
+            window.dispatchEvent(new CustomEvent('other-character-context-menu', {
+                detail: {
+                    x: evt.clientX,
+                    y: evt.clientY,
+                    userId: playerInfo.userId,
+                    name: playerInfo.name,
+                    picture: playerInfo.picture,
+                    withinRange: distance <= GameScene.TILE * 2,
+                }
+            }));
+        });
         this.otherPlayers.set(playerInfo.id, char);
     }
 }

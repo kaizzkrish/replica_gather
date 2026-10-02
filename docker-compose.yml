@@ -24,11 +24,25 @@ services:
       - DATABASE_URL=postgres://postgres:postgres@db:5432/replica_gather
       - PORT=707
       - CORS_ORIGINS=${CORS_ORIGINS:-*}
+      - TURN_SECRET=${TURN_SECRET}
+      - TURN_SERVER_URL=${TURN_SERVER_URL}
     ports:
       - "707:707"
     depends_on:
       db:
         condition: service_healthy
+
+  # TURN fallback for calls that can't connect directly (see coturn/turnserver.conf).
+  # Host networking because coturn needs its full min-port..max-port UDP range
+  # reachable, which Docker's default bridge can't forward at that scale —
+  # this requires a Linux host (won't work under Docker Desktop on Mac/Windows).
+  coturn:
+    image: coturn/coturn:4.6-alpine
+    restart: always
+    network_mode: host
+    volumes:
+      - ./coturn/turnserver.conf:/etc/coturn/turnserver.conf:ro
+    command: ["-c", "/etc/coturn/turnserver.conf"]
 
   client:
     build:

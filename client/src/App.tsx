@@ -12,6 +12,8 @@ import CharacterContextMenu from './components/CharacterContextMenu';
 import AvatarCustomizer from './components/AvatarCustomizer';
 import PetPanel from './components/PetPanel';
 import PetContextMenu from './components/PetContextMenu';
+import CallManager from './components/CallManager';
+import PlayerContextMenu from './components/PlayerContextMenu';
 import { SOCKET_URL } from './config/env';
 import { defaultCustomization } from './game/lpcCatalog';
 import type { Customization } from './game/lpcCatalog';
@@ -127,6 +129,8 @@ function App() {
           <Game socket={socket} user={currUser || user} />
           <CharacterContextMenu onCustomize={() => setShowAvatarCustomizer(true)} />
           <PetContextMenu currUser={currUser || user} />
+          <PlayerContextMenu />
+          <CallManager socket={socket} user={currUser || user} />
 
           <div className="ui-overlay">
             <Sidebar

@@ -396,6 +396,17 @@ const Chat: React.FC<ChatProps> = ({ socket, user }) => {
                                     : (currentChatItem.isOnline ? 'online' : formatLastSeen(currentChatItem.lastSeen))}
                             </p>
                         </div>
+                        {activeChatId !== 'global' && (
+                            <button
+                                className="chat-call-btn"
+                                title={`Call ${currentChatItem.name}`}
+                                onClick={() => window.dispatchEvent(new CustomEvent('call-request', {
+                                    detail: { userId: activeChatId, name: currentChatItem.name, picture: currentChatItem.picture }
+                                }))}
+                            >
+                                <i className="ph-bold ph-phone-call"></i>
+                            </button>
+                        )}
                     </div>
 
                     <div className="messages-list">

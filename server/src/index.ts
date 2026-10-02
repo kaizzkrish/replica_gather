@@ -1,5 +1,6 @@
 import express from 'express';
 import http from 'http';
+import crypto from 'crypto';
 import { Server } from 'socket.io';
 import cors from 'cors';
 import dotenv from 'dotenv';
@@ -132,6 +133,37 @@ app.post('/api/auth/reset-password', async (req, res) => {
 
 app.get('/', (req, res) => {
     res.send('Replica Gather Server is running!');
+});
+
+// Time-limited TURN credentials (coturn's standard REST API mechanism —
+// https://github.com/coturn/coturn/blob/master/docs/turn-rest-todo.txt).
+// Never ships a static TURN username/password to clients: that would let
+// anyone relay unlimited traffic through the server indefinitely. Instead
+// the username embeds an expiry, and the "password" is an HMAC over it that
+// only the server (holding TURN_SECRET) can produce — coturn verifies the
+// same HMAC using its own copy of that secret, so no credential it ever
+// issues is valid longer than TTL_SECONDS.
+const TURN_TTL_SECONDS = 24 * 60 * 60; // 24h covers a full 12-20h session with margin
+app.get('/api/turn-credentials', (req, res) => {
+    const userId = String(req.query.userId || 'anon');
+    const secret = process.env.TURN_SECRET;
+    const turnUrl = process.env.TURN_SERVER_URL;
+    if (!secret || !turnUrl) {
+        // No TURN configured — client falls back to STUN-only (direct P2P
+        // still works for the common case; only restrictive-NAT pairs fail).
+        return res.json({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] });
+    }
+
+    const username = `${Math.floor(Date.now() / 1000) + TURN_TTL_SECONDS}:${userId}`;
+    const credential = crypto.createHmac('sha1', secret).update(username).digest('base64');
+
+    res.json({
+        iceServers: [
+            { urls: 'stun:stun.l.google.com:19302' },
+            { urls: `${turnUrl}?transport=udp`, username, credential },
+            { urls: `${turnUrl}?transport=tcp`, username, credential },
+        ],
+    });
 });
 
 const server = http.createServer(app);
@@ -559,6 +591,61 @@ io.on('connection', (socket) => {
 
     socket.on('answer-call', (data: { to: string, signal: any, from: string }) => {
         io.to(data.to).emit('call-accepted', { signal: data.signal, from: data.from });
+    });
+
+    // --- Explicit long-lived calls (audio + screen share) -------------------
+    // Deliberately separate event namespace from call-user/answer-call above,
+    // which ProximityAudio fires automatically with no consent step the
+    // instant two players are near each other. These route by persistent
+    // userId (not socket.id), since a call target is "this person" — found
+    // via their current socket each time, same lookup pattern as markAsRead.
+    const findSocketByUserId = (userId: string) =>
+        Object.values(activePlayers).find((p) => p.userId === userId);
+
+    socket.on('call:invite', (data: { toUserId: string }) => {
+        const caller = activePlayers[socket.id];
+        const callee = data?.toUserId ? findSocketByUserId(data.toUserId) : undefined;
+        if (!caller || !callee) {
+            socket.emit('call:unavailable', { userId: data?.toUserId });
+            return;
+        }
+        io.to(callee.id).emit('call:incoming', {
+            fromUserId: caller.userId,
+            fromName: caller.name,
+            fromPicture: caller.picture,
+        });
+    });
+
+    socket.on('call:accept', (data: { toUserId: string }) => {
+        const callee = activePlayers[socket.id];
+        const caller = data?.toUserId ? findSocketByUserId(data.toUserId) : undefined;
+        if (!callee || !caller) return;
+        io.to(caller.id).emit('call:accepted', { byUserId: callee.userId });
+    });
+
+    socket.on('call:decline', (data: { toUserId: string }) => {
+        const callee = activePlayers[socket.id];
+        const caller = data?.toUserId ? findSocketByUserId(data.toUserId) : undefined;
+        if (!callee || !caller) return;
+        io.to(caller.id).emit('call:declined', { byUserId: callee.userId });
+    });
+
+    // Relays the actual WebRTC offer/answer (and, when the connection needs
+    // to recover, a fresh re-offer) between the two userIds — same relay
+    // role as call-user/answer-call, just userId-routed and reused for both
+    // directions and for mid-call renegotiation.
+    socket.on('call:signal', (data: { toUserId: string, signal: any }) => {
+        const sender = activePlayers[socket.id];
+        const target = data?.toUserId ? findSocketByUserId(data.toUserId) : undefined;
+        if (!sender || !target) return;
+        io.to(target.id).emit('call:signal', { fromUserId: sender.userId, signal: data.signal });
+    });
+
+    socket.on('call:end', (data: { toUserId: string }) => {
+        const ender = activePlayers[socket.id];
+        const other = data?.toUserId ? findSocketByUserId(data.toUserId) : undefined;
+        if (!ender) return;
+        if (other) io.to(other.id).emit('call:ended', { byUserId: ender.userId });
     });
 
     socket.on('chatMessage', async (data: any) => {
