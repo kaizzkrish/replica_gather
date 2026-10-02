@@ -1,5 +1,14 @@
 {
+  "name": "replica-gather",
+  "private": true,
+  "scripts": {
+    "dev": "concurrently -k -n SERVER,CLIENT,ELECTRON -c blue,green,magenta \"npm --prefix server run dev\" \"npm --prefix client run dev\" \"npx wait-on http://localhost:5173 && npm --prefix electron run dev\""
+  },
   "dependencies": {
     "jimp": "^1.6.0"
+  },
+  "devDependencies": {
+    "concurrently": "^10.0.5",
+    "wait-on": "^9.5.1"
   }
 }

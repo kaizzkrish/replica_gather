@@ -1,0 +1,28 @@
+{
+  "name": "replica-gather-desktop",
+  "private": true,
+  "version": "0.0.1",
+  "description": "Desktop shell for replica_gather — step 1 is just the existing client running as a native window; remote control (nut.js) comes later.",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dev": "cross-env REPLICA_DEV_URL=http://localhost:5173 electron .",
+    "dist": "electron-builder"
+  },
+  "devDependencies": {
+    "cross-env": "^10.1.0",
+    "electron": "^44.0.0",
+    "electron-builder": "^26.0.0"
+  },
+  "build": {
+    "appId": "com.replicagather.desktop",
+    "productName": "Replica Gather",
+    "files": [
+      "main.js",
+      "preload.js"
+    ],
+    "win": {
+      "target": "nsis"
+    }
+  }
+}

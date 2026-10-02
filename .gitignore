@@ -18,6 +18,7 @@ build/
 *.d.ts.map
 !client/src/**/*
 !server/src/**/*
+!electron/*.js
 
 # Logs
 npm-debug.log*
