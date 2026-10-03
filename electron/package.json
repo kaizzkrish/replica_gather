@@ -19,7 +19,9 @@
     "productName": "Replica Gather",
     "files": [
       "main.js",
-      "preload.js"
+      "preload.js",
+      "picker.html",
+      "picker-preload.js"
     ],
     "win": {
       "target": "nsis"

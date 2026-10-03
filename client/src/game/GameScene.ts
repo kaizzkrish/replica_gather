@@ -26,6 +26,10 @@ interface PetState {
 export default class GameScene extends Phaser.Scene {
     private player?: Character;
     private otherPlayers: Map<string, Character> = new Map();
+    // userId/name/picture per otherPlayers entry (same keys) — Character
+    // itself doesn't retain these, only the display name baked into its
+    // name tag, and the context-menu-target resolver below needs all three.
+    private otherPlayerMeta: Map<string, { userId: string; name: string; picture?: string }> = new Map();
     private myPet?: Pet;
     private myPetState?: PetState;
     private otherPets: Map<string, Pet> = new Map(); // keyed by ownerUserId
@@ -517,6 +521,7 @@ export default class GameScene extends Phaser.Scene {
         this.socket.on('playerDisconnected', (id: string) => {
             const char = this.otherPlayers.get(id);
             if (char) { char.destroy(); this.otherPlayers.delete(id); }
+            this.otherPlayerMeta.delete(id);
         });
 
         // Broadcast when anyone (including ourselves) saves a new look —
@@ -860,6 +865,64 @@ export default class GameScene extends Phaser.Scene {
         this.roomBar.fillRoundedRect(400 - (textWidth + 30) / 2, 8, textWidth + 30, 28, 14);
     }
 
+    // Own and nearby-others' right-click hit areas are both sized to cover
+    // the whole character (64x76) for easy clicking, which means they
+    // frequently overlap once someone's close enough to call — exactly the
+    // distance "Connect Audio" requires. Rather than trust whichever object
+    // Phaser's hit-test happens to pick for an overlapping point, every
+    // character's pointerdown handler resolves to the SAME answer: whichever
+    // character (self or an otherPlayer) is actually nearest the click's
+    // world position wins, so an ambiguous click always goes to whoever the
+    // cursor is really closest to.
+    private resolveContextMenuTarget(pointer: Phaser.Input.Pointer): { type: 'self' } | { type: 'other', socketId: string } | null {
+        if (!this.player) return null;
+        const wx = pointer.worldX;
+        const wy = pointer.worldY;
+        let bestType: 'self' | 'other' = 'self';
+        let bestSocketId = '';
+        let bestDist = Phaser.Math.Distance.Between(wx, wy, this.player.x, this.player.y);
+
+        this.otherPlayers.forEach((char, socketId) => {
+            const d = Phaser.Math.Distance.Between(wx, wy, char.x, char.y);
+            if (d < bestDist) {
+                bestDist = d;
+                bestType = 'other';
+                bestSocketId = socketId;
+            }
+        });
+
+        return bestType === 'self' ? { type: 'self' } : { type: 'other', socketId: bestSocketId };
+    }
+
+    private openContextMenuForTarget(pointer: Phaser.Input.Pointer) {
+        if (!pointer.rightButtonDown()) return;
+        const target = this.resolveContextMenuTarget(pointer);
+        if (!target) return;
+        const evt = pointer.event as MouseEvent;
+
+        if (target.type === 'self') {
+            window.dispatchEvent(new CustomEvent('character-context-menu', {
+                detail: { x: evt.clientX, y: evt.clientY }
+            }));
+            return;
+        }
+
+        const char = this.otherPlayers.get(target.socketId);
+        const meta = this.otherPlayerMeta.get(target.socketId);
+        if (!char || !meta || !this.player) return;
+        const distance = Phaser.Math.Distance.Between(this.player.x, this.player.y, char.x, char.y);
+        window.dispatchEvent(new CustomEvent('other-character-context-menu', {
+            detail: {
+                x: evt.clientX,
+                y: evt.clientY,
+                userId: meta.userId,
+                name: meta.name,
+                picture: meta.picture,
+                withinRange: distance <= GameScene.TILE * 2,
+            }
+        }));
+    }
+
     addPlayer(playerInfo: any) {
         if (!playerInfo) return;
         const x = isNaN(Number(playerInfo.x)) ? 400 : Number(playerInfo.x);
@@ -867,13 +930,7 @@ export default class GameScene extends Phaser.Scene {
         const custom = playerInfo.customization || DEFAULT_CUSTOMIZATION;
         this.player = new Character(this, x, y, playerInfo.name, custom);
         this.player.setDepth(10);
-        this.player.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
-            if (!pointer.rightButtonDown()) return;
-            const evt = pointer.event as MouseEvent;
-            window.dispatchEvent(new CustomEvent('character-context-menu', {
-                detail: { x: evt.clientX, y: evt.clientY }
-            }));
-        });
+        this.player.on('pointerdown', (pointer: Phaser.Input.Pointer) => this.openContextMenuForTarget(pointer));
         this.updateFollowState();
     }
 
@@ -885,21 +942,8 @@ export default class GameScene extends Phaser.Scene {
         const char = new Character(this, x, y, playerInfo.name, custom);
         char.setDepth(9);
         char.syncAlpha(0.15);
-        char.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
-            if (!pointer.rightButtonDown() || !this.player) return;
-            const evt = pointer.event as MouseEvent;
-            const distance = Phaser.Math.Distance.Between(this.player.x, this.player.y, char.x, char.y);
-            window.dispatchEvent(new CustomEvent('other-character-context-menu', {
-                detail: {
-                    x: evt.clientX,
-                    y: evt.clientY,
-                    userId: playerInfo.userId,
-                    name: playerInfo.name,
-                    picture: playerInfo.picture,
-                    withinRange: distance <= GameScene.TILE * 2,
-                }
-            }));
-        });
+        char.on('pointerdown', (pointer: Phaser.Input.Pointer) => this.openContextMenuForTarget(pointer));
         this.otherPlayers.set(playerInfo.id, char);
+        this.otherPlayerMeta.set(playerInfo.id, { userId: playerInfo.userId, name: playerInfo.name, picture: playerInfo.picture });
     }
 }

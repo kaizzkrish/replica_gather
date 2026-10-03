@@ -1,7 +1,12 @@
+/* Discord's actual color tokens, not approximations:
+   #313338 chat bg, #2b2d31 panel bg, #1e1f22 deepest bg, #111214 floating/
+   popout bg, #f2f3f5 primary text, #949ba4 muted text, #5865f2 blurple,
+   #23a55a green (connect/accept), #da373c / #ed4245 red (decline/end). */
+
 .call-overlay {
     position: fixed;
     inset: 0;
-    background: rgba(74, 52, 94, 0.45);
+    background: rgba(0, 0, 0, 0.6);
     backdrop-filter: blur(4px);
     display: flex;
     align-items: center;
@@ -10,32 +15,32 @@
 }
 
 .call-card {
-    background: #ffffff;
-    border-radius: 20px;
-    padding: 32px 28px;
-    width: 280px;
+    background: #2b2d31;
+    border-radius: 16px;
+    padding: 36px 32px 28px;
+    width: 300px;
     text-align: center;
-    box-shadow: 0 24px 48px -12px rgba(139, 77, 232, 0.35);
-    animation: call-pop 0.2s ease-out;
+    box-shadow: 0 16px 48px rgba(0, 0, 0, 0.5);
+    animation: call-pop 0.2s cubic-bezier(0.2, 0, 0.2, 1);
 }
 
 @keyframes call-pop {
-    from { opacity: 0; transform: scale(0.94); }
+    from { opacity: 0; transform: scale(0.92); }
     to { opacity: 1; transform: scale(1); }
 }
 
 .call-avatar {
-    width: 72px;
-    height: 72px;
+    width: 80px;
+    height: 80px;
     border-radius: 50%;
     margin: 0 auto 16px;
-    background: var(--profile-bg-lavender, #e8ddfb);
-    color: var(--profile-purple-1, #8b4de8);
+    background: #5865f2;
+    color: #ffffff;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 28px;
-    font-weight: 700;
+    font-size: 30px;
+    font-weight: 600;
     overflow: hidden;
 }
 
@@ -46,42 +51,67 @@
 }
 
 .call-avatar.small {
-    width: 36px;
-    height: 36px;
-    font-size: 15px;
+    width: 40px;
+    height: 40px;
+    font-size: 16px;
     flex-shrink: 0;
 }
 
+.call-name-text {
+    margin: 0 0 4px;
+    font-size: 20px;
+    font-weight: 700;
+    color: #f2f3f5;
+}
+
 .call-status-text {
-    margin: 0 0 20px;
-    font-size: 15px;
-    color: var(--profile-text-primary, #202020);
-    font-weight: 600;
+    margin: 0 0 28px;
+    font-size: 14px;
+    color: #949ba4;
 }
 
 .call-actions-row {
     display: flex;
-    gap: 10px;
+    justify-content: center;
+    gap: 24px;
 }
 
-.call-btn {
-    flex: 1;
-    height: 42px;
+/* Large circular icon buttons — matches Discord's actual incoming-call UI
+   (icon + color communicate accept/decline, no text labels). */
+.call-round-btn {
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
     border: none;
-    border-radius: 12px;
-    font-weight: 700;
-    font-size: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    color: #ffffff;
     cursor: pointer;
+    transition: transform 0.1s ease, background 0.15s ease;
 }
 
-.call-btn-accept {
-    background: #10b981;
-    color: #fff;
+.call-round-btn:hover {
+    transform: scale(1.06);
 }
 
-.call-btn-end {
-    background: var(--error-color, #ef4444);
-    color: #fff;
+.call-round-accept {
+    background: #23a55a;
+}
+
+.call-round-accept:hover {
+    background: #1a8a48;
+}
+
+.call-round-decline,
+.call-round-end {
+    background: #da373c;
+}
+
+.call-round-decline:hover,
+.call-round-end:hover {
+    background: #a12828;
 }
 
 /* ============ Active call bar ============ */
@@ -90,10 +120,10 @@
     top: 20px;
     left: 50%;
     transform: translateX(-50%);
-    background: #ffffff;
-    border-radius: 18px;
-    box-shadow: 0 12px 32px rgba(74, 52, 94, 0.22);
-    padding: 10px 16px;
+    background: #2b2d31;
+    border-radius: 12px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+    padding: 10px 14px;
     display: flex;
     align-items: center;
     gap: 16px;
@@ -110,12 +140,23 @@
 .call-bar-name {
     font-size: 13px;
     font-weight: 700;
-    color: var(--profile-text-primary, #202020);
+    color: #f2f3f5;
 }
 
 .call-bar-status {
+    display: flex;
+    align-items: center;
+    gap: 4px;
     font-size: 11px;
-    color: var(--profile-text-secondary, #666);
+    color: #949ba4;
+}
+
+.call-bar-status.status-connected {
+    color: #23a55a;
+}
+
+.call-bar-status.status-reconnecting {
+    color: #f0b232;
 }
 
 .call-bar-actions {
@@ -124,27 +165,39 @@
 }
 
 .call-icon-btn {
-    width: 36px;
-    height: 36px;
+    width: 34px;
+    height: 34px;
     border-radius: 50%;
     border: none;
-    background: var(--profile-field-bg, #f5f5f7);
-    color: var(--profile-text-primary, #202020);
+    background: #1e1f22;
+    color: #f2f3f5;
     display: flex;
     align-items: center;
     justify-content: center;
     cursor: pointer;
-    font-size: 16px;
+    font-size: 15px;
+    transition: background 0.15s ease, color 0.15s ease;
+}
+
+.call-icon-btn:hover {
+    background: #3a3c42;
 }
 
 .call-icon-btn.active {
-    background: var(--profile-purple-1, #8b4de8);
-    color: #fff;
+    background: #5865f2;
+    color: #ffffff;
+}
+
+.call-icon-btn.active:hover {
+    background: #4752c4;
 }
 
 .call-icon-end {
-    background: var(--error-color, #ef4444);
-    color: #fff;
+    background: #da373c;
+}
+
+.call-icon-end:hover {
+    background: #a12828;
 }
 
 .call-screens {
@@ -159,14 +212,14 @@
 .call-screen-video {
     width: 160px;
     height: 90px;
-    border-radius: 10px;
-    background: #000;
+    border-radius: 8px;
+    background: #1e1f22;
     object-fit: contain;
 }
 
 .call-screen-video.self {
     opacity: 0.85;
-    border: 2px solid var(--profile-purple-1, #8b4de8);
+    border: 2px solid #5865f2;
 }
 
 .call-toast {
@@ -174,13 +227,13 @@
     top: 90px;
     left: 50%;
     transform: translateX(-50%);
-    background: #2d3436;
-    color: #fff;
+    background: #111214;
+    color: #f2f3f5;
     padding: 10px 18px;
-    border-radius: 10px;
+    border-radius: 8px;
     font-size: 13px;
     z-index: 4100;
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
 }
 
 @media (max-width: 640px) {

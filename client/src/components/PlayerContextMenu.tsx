@@ -63,7 +63,7 @@ const PlayerContextMenu: React.FC = () => {
                     }}
                 >
                     <i className="ph-bold ph-phone-call"></i>
-                    Connect Audio
+                    Call
                 </button>
             </div>
         </div>

@@ -1,3 +1,8 @@
+/* Discord's actual right-click menu: #111214 floating bg, 8px radius,
+   blurple (#5865f2) hover highlight, white text on hover. Shared by the
+   Customize menu, the "Call" menu on other players, and the pet actions
+   menu — restyling this one file keeps all of them visually consistent. */
+
 .char-ctx-backdrop {
     position: fixed;
     inset: 0;
@@ -6,12 +11,11 @@
 
 .char-ctx-menu {
     position: fixed;
-    min-width: 170px;
+    min-width: 188px;
     padding: 6px;
-    background: var(--card-bg);
-    border: 1px solid var(--glass-border);
-    border-radius: 12px;
-    box-shadow: var(--shadow-premium);
+    background: #111214;
+    border-radius: 8px;
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.24), 0 0 0 1px rgba(0, 0, 0, 0.3);
     animation: char-ctx-pop 0.12s ease-out;
 }
 
@@ -27,26 +31,44 @@
     width: 100%;
     padding: 8px 10px;
     border: none;
-    border-radius: 8px;
+    border-radius: 4px;
     background: transparent;
-    color: var(--text-main);
-    font-size: 0.85rem;
-    font-weight: 600;
+    color: #dbdee1;
+    font-size: 14px;
+    font-weight: 500;
     text-align: left;
     cursor: pointer;
-    transition: background 0.15s ease, color 0.15s ease;
+    transition: background 0.1s ease, color 0.1s ease;
 }
 
 .char-ctx-item i {
-    font-size: 15px;
-    color: var(--primary-color);
+    font-size: 16px;
+    color: #949ba4;
+    transition: color 0.1s ease;
 }
 
 .char-ctx-item:hover {
-    background: var(--primary-color);
+    background: #5865f2;
     color: #ffffff;
 }
 
 .char-ctx-item:hover i {
+    color: #ffffff;
+}
+
+.char-ctx-item.char-ctx-danger {
+    color: #da373c;
+}
+
+.char-ctx-item.char-ctx-danger i {
+    color: #da373c;
+}
+
+.char-ctx-item.char-ctx-danger:hover {
+    background: #da373c;
+    color: #ffffff;
+}
+
+.char-ctx-item.char-ctx-danger:hover i {
     color: #ffffff;
 }

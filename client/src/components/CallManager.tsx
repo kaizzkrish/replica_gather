@@ -432,7 +432,13 @@ const CallManager: React.FC<CallManagerProps> = ({ socket, user }) => {
         }
 
         try {
-            const screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: false });
+            // audio: true matters even though system/tab audio capture is
+            // actually granted by the Electron main process (see main.js's
+            // setDisplayMediaRequestHandler, which passes audio: 'loopback')
+            // — if this request itself says audio: false, Chromium drops
+            // the audio track before it ever reaches the peer connection,
+            // regardless of what the main process offered.
+            const screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true });
             screenStreamRef.current = screenStream;
             if (localVideoRef.current) localVideoRef.current.srcObject = screenStream;
             if (peerRef.current) peerRef.current.addStream(screenStream);
@@ -473,8 +479,13 @@ const CallManager: React.FC<CallManagerProps> = ({ socket, user }) => {
                 <div className="call-overlay">
                     <div className="call-card">
                         <div className="call-avatar">{peerInfo.picture ? <img src={peerInfo.picture} alt="" /> : peerInfo.name[0]}</div>
-                        <p className="call-status-text">Calling {peerInfo.name}...</p>
-                        <button className="call-btn call-btn-end" onClick={handleCancelOutgoing}>Cancel</button>
+                        <p className="call-name-text">{peerInfo.name}</p>
+                        <p className="call-status-text">Calling...</p>
+                        <div className="call-actions-row">
+                            <button className="call-round-btn call-round-end" onClick={handleCancelOutgoing} title="Cancel">
+                                <i className="ph-fill ph-phone-x"></i>
+                            </button>
+                        </div>
                     </div>
                 </div>
             )}
@@ -483,10 +494,15 @@ const CallManager: React.FC<CallManagerProps> = ({ socket, user }) => {
                 <div className="call-overlay">
                     <div className="call-card">
                         <div className="call-avatar">{peerInfo.picture ? <img src={peerInfo.picture} alt="" /> : peerInfo.name[0]}</div>
-                        <p className="call-status-text">{peerInfo.name} is calling...</p>
+                        <p className="call-name-text">{peerInfo.name}</p>
+                        <p className="call-status-text">Incoming call...</p>
                         <div className="call-actions-row">
-                            <button className="call-btn call-btn-accept" onClick={handleAccept}>Accept</button>
-                            <button className="call-btn call-btn-end" onClick={handleDecline}>Decline</button>
+                            <button className="call-round-btn call-round-decline" onClick={handleDecline} title="Decline">
+                                <i className="ph-fill ph-phone-x"></i>
+                            </button>
+                            <button className="call-round-btn call-round-accept" onClick={handleAccept} title="Accept">
+                                <i className="ph-fill ph-phone"></i>
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -498,10 +514,15 @@ const CallManager: React.FC<CallManagerProps> = ({ socket, user }) => {
                         <div className="call-avatar small">{peerInfo.picture ? <img src={peerInfo.picture} alt="" /> : peerInfo.name[0]}</div>
                         <div>
                             <div className="call-bar-name">{peerInfo.name}</div>
-                            <div className="call-bar-status">
+                            <div className={`call-bar-status status-${status}`}>
                                 {status === 'connecting' && 'Connecting…'}
                                 {status === 'reconnecting' && 'Reconnecting…'}
-                                {status === 'connected' && formatDuration(elapsedSec)}
+                                {status === 'connected' && (
+                                    <>
+                                        <i className="ph-fill ph-wifi-high"></i>
+                                        Voice Connected · {formatDuration(elapsedSec)}
+                                    </>
+                                )}
                             </div>
                         </div>
                     </div>

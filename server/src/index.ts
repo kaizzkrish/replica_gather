@@ -334,6 +334,21 @@ io.on('connection', (socket) => {
             }
         } catch (err: any) { console.error('DB joinRoom:', err.message); }
 
+        // A page refresh (or a flaky connection) disconnects the old socket
+        // and connects a new one for the SAME userId — if the old socket's
+        // cleanup hasn't run yet (or never ran, e.g. the tab just vanished
+        // without a clean close), its stale activePlayers entry would
+        // otherwise sit there alongside the new one. Anything that looks up
+        // "this userId's socket" (call:invite and friends) must find the
+        // live connection, not whichever entry happens to be first in
+        // insertion order — so the old one is purged the moment a new
+        // connection for the same userId shows up.
+        for (const [oldSocketId, oldPlayer] of Object.entries(activePlayers)) {
+            if (oldPlayer.userId === userId && oldSocketId !== socket.id) {
+                delete activePlayers[oldSocketId];
+            }
+        }
+
         const newPlayer: Player = {
             x: playerData.x!, y: playerData.y!, id: socket.id,
             userId: userId, name: playerData.name!, picture: playerData.picture!, room: room,
